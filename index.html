@@ -61,7 +61,8 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 /* ---------- conteúdo ---------- */
 main{max-width:760px;margin:0 auto;padding:14px 14px calc(96px + env(safe-area-inset-bottom,0px))}
 section.blk{margin:0 0 22px}
-h2{font:700 21px/1.2 var(--head);margin:0 0 10px;display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+h2{font:700 21px/1.2 var(--head);margin:0 0 10px;display:flex;align-items:center;justify-content:space-between;gap:8px 10px;flex-wrap:wrap}
+h2 .row{gap:6px;flex-wrap:wrap}
 h2 .aside{font:500 15px var(--body);color:var(--mute)}
 h3{font:700 18px/1.2 var(--head);margin:16px 0 8px}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:var(--shadow)}
@@ -279,7 +280,7 @@ const FULL = [[],[2],[3],[4,2],[4,3],[4,3,2],[4,3,3],[4,3,3,1],[4,3,3,2],[4,3,3,
 const HALF = [[],[2],[2],[3],[3],[4,2],[4,2],[4,3],[4,3],[4,3,2],[4,3,2],[4,3,3],[4,3,3],[4,3,3,1],[4,3,3,1],[4,3,3,2],[4,3,3,2],[4,3,3,3,1],[4,3,3,3,1],[4,3,3,3,2],[4,3,3,3,2]];
 function pactSlots(l){ const n = l >= 17 ? 4 : l >= 11 ? 3 : l >= 2 ? 2 : 1; const lv = Math.min(5, Math.ceil(l / 2)); const a = Array(lv).fill(0); a[lv-1] = n; return a; }
 const CONDITIONS = ["Agarrado","Amedrontado","Atordoado","Caído","Cego","Contido","Enfeitiçado","Envenenado","Incapacitado","Inconsciente","Invisível","Paralisado","Petrificado","Surdo"];
-const MASTERIES = ["","Ágil (Nick)","Atordoante (Topple)","Cortar (Cleave)","Drenar (Sap)","Empurrar (Push)","Lentidão (Slow)","Raspar (Graze)","Vexar (Vex)"];
+const MASTERIES = ["","Ágil (Nick)","Cortar (Cleave)","Derrubar (Topple)","Drenar (Sap)","Empurrar (Push)","Lentidão (Slow)","Raspar (Graze)","Vexar (Vex)"];
 
 const prof = l => 2 + Math.floor((Math.max(1, Math.min(20, l)) - 1) / 4);
 const mod = s => Math.floor(((+s || 0) - 10) / 2);
@@ -298,12 +299,14 @@ function blank(){
     spell:{abil:"int", slots:Array.from({length:9},()=>({max:0,used:0})), list:[]},
     items:[], coins:{pc:0,pp:0,pe:0,po:0,pl:0},
     notes:{features:"",profs:"",langs:"",personality:"",other:""},
-    feats:[], featKeys:[], autoSkills:[], autoProfs:"", hpAuto:true, hiddenFeats:[], lineage:"",
+    feats:[], featKeys:[], autoSkills:[], autoProfs:"", hpAuto:true, hiddenFeats:[], lineage:"", acAuto:true, acBonus:0, slotsAuto:true,
     updated:Date.now()
   };
 }
 function normalize(c){
   const hadHpAuto = !!c && Object.prototype.hasOwnProperty.call(c, "hpAuto");
+  const hadAcAuto = !!c && Object.prototype.hasOwnProperty.call(c, "acAuto");
+  const hadSlotsAuto = !!c && Object.prototype.hasOwnProperty.call(c, "slotsAuto");
   const b = blank();
   c = Object.assign(b, c || {});
   for (const k of ["abilities","coins","notes","hp","death"]) c[k] = Object.assign(blank()[k], c[k] || {});
@@ -312,6 +315,11 @@ function normalize(c){
   for (const k of ["attacks","resources","items","conditions","feats","featKeys","autoSkills","hiddenFeats"]) if (!Array.isArray(c[k])) c[k] = [];
   if (!hadHpAuto) c.hpAuto = false;
   if (typeof c.lineage !== "string") c.lineage = "";
+  c.attacks.forEach(a => { if (a.mastery === "Atordoante (Topple)") a.mastery = "Derrubar (Topple)"; });
+  c.items.forEach(i => { if (!i.kind) i.kind = "gear"; });
+  if (!hadAcAuto) c.acAuto = false;
+  if (!hadSlotsAuto) c.slotsAuto = false;
+  c.acBonus = +c.acBonus || 0;
   if (!Array.isArray(c.spell.list)) c.spell.list = [];
   c.saves = c.saves || {}; c.skills = c.skills || {};
   return c;
@@ -1117,7 +1125,7 @@ function presetProfs(c){
 const SRC_ORDER = ["Classe","Subclasse","Espécie","Antecedente","Talento","Outro"];
 function applyPresets(c, opts = {}){
   const bg = BACKGROUNDS[c.background];
-  c.featKeys = bg ? [featKeyOf(bg[1])] : [];
+  c.featKeys = featKeysOf(c);
   // características
   const want = presetFeatures(c), wantKeys = new Set(want.map(f => f.key));
   c.feats = c.feats.filter(f => !f.auto || f.edited || wantKeys.has(f.key));
@@ -1167,12 +1175,500 @@ function hpAutoMax(c){
   return Math.max(L, d + con + (L - 1) * (d / 2 + 1 + con) + per * L + drac);
 }
 function syncDerived(c){
+  c.featKeys = featKeysOf(c);
+  if (c.acAuto) c.ac = computeAC(c);
   if (c.hpAuto) {
     const m = hpAutoMax(c);
     if (m !== c.hp.max) { const full = c.hp.cur >= c.hp.max; c.hp.max = m; c.hp.cur = full ? m : Math.min(c.hp.cur, m); }
   }
   // usos que dependem de atributos (ex.: Inspiração de Bardo) acompanham
   for (const w of presetResources(c)) { const r = c.resources.find(x => x.key === w.key && !x.edited); if (r && r.max !== w.max) { r.max = w.max; r.used = Math.min(r.used, r.max); } }
+}
+
+/* ================= CATÁLOGO: ARMAS, ARMADURAS, EQUIPAMENTO, TALENTOS (D&D 2024) ================= */
+const MASTERY_INFO = {
+  Cleave:["Cortar (Cleave)","1x por turno, ao acertar, faz outro ataque contra uma criatura a até 1,5 m do alvo."],
+  Graze:["Raspar (Graze)","Ao errar, causa dano igual ao modificador de atributo usado."],
+  Nick:["Ágil (Nick)","O ataque extra da propriedade Leve sai como parte da ação de Ataque, não como ação bônus."],
+  Push:["Empurrar (Push)","Ao acertar, empurra o alvo (Grande ou menor) 3 m para longe."],
+  Sap:["Drenar (Sap)","Ao acertar, o alvo tem desvantagem no próximo ataque dele."],
+  Slow:["Lentidão (Slow)","Ao acertar e causar dano, reduz o deslocamento do alvo em 3 m."],
+  Topple:["Derrubar (Topple)","Ao acertar, o alvo faz salvaguarda de CON (CD 8 + mod. + prof.) ou fica Caído."],
+  Vex:["Vexar (Vex)","Ao acertar e causar dano, tem vantagem no próximo ataque contra o alvo."]
+};
+// [chave, nome, original, categoria, tipo, dano, tipo de dano, propriedades, maestria, alcance, versátil]
+const WEAPONS = [
+  ["club","Clava","Club","simple","melee","1d4","contundente",["Leve"],"Slow"],
+  ["dagger","Adaga","Dagger","simple","melee","1d4","perfurante",["Acuidade","Leve","Arremesso"],"Nick","6/18 m"],
+  ["greatclub","Clava Grande","Greatclub","simple","melee","1d8","contundente",["Duas Mãos"],"Push"],
+  ["handaxe","Machadinha","Handaxe","simple","melee","1d6","cortante",["Leve","Arremesso"],"Vex","6/18 m"],
+  ["javelin","Azagaia","Javelin","simple","melee","1d6","perfurante",["Arremesso"],"Slow","9/36 m"],
+  ["lighthammer","Martelo Leve","Light Hammer","simple","melee","1d4","contundente",["Leve","Arremesso"],"Nick","6/18 m"],
+  ["mace","Maça","Mace","simple","melee","1d6","contundente",[],"Sap"],
+  ["quarterstaff","Bordão","Quarterstaff","simple","melee","1d6","contundente",["Versátil"],"Topple","","1d8"],
+  ["sickle","Foice Curta","Sickle","simple","melee","1d4","cortante",["Leve"],"Nick"],
+  ["spear","Lança","Spear","simple","melee","1d6","perfurante",["Arremesso","Versátil"],"Sap","6/18 m","1d8"],
+  ["dart","Dardo","Dart","simple","ranged","1d4","perfurante",["Acuidade","Arremesso"],"Vex","6/18 m"],
+  ["lightcrossbow","Besta Leve","Light Crossbow","simple","ranged","1d8","perfurante",["Munição","Recarga","Duas Mãos"],"Slow","24/96 m"],
+  ["shortbow","Arco Curto","Shortbow","simple","ranged","1d6","perfurante",["Munição","Duas Mãos"],"Vex","24/96 m"],
+  ["sling","Funda","Sling","simple","ranged","1d4","contundente",["Munição"],"Slow","9/36 m"],
+  ["battleaxe","Machado de Batalha","Battleaxe","martial","melee","1d8","cortante",["Versátil"],"Topple","","1d10"],
+  ["flail","Mangual","Flail","martial","melee","1d8","contundente",[],"Sap"],
+  ["glaive","Glaive","Glaive","martial","melee","1d10","cortante",["Pesada","Alcance","Duas Mãos"],"Graze"],
+  ["greataxe","Machado Grande","Greataxe","martial","melee","1d12","cortante",["Pesada","Duas Mãos"],"Cleave"],
+  ["greatsword","Espada Grande","Greatsword","martial","melee","2d6","cortante",["Pesada","Duas Mãos"],"Graze"],
+  ["halberd","Alabarda","Halberd","martial","melee","1d10","cortante",["Pesada","Alcance","Duas Mãos"],"Cleave"],
+  ["lance","Lança de Montaria","Lance","martial","melee","1d10","perfurante",["Pesada","Alcance","Duas Mãos (exceto montado)"],"Topple"],
+  ["longsword","Espada Longa","Longsword","martial","melee","1d8","cortante",["Versátil"],"Sap","","1d10"],
+  ["maul","Malho","Maul","martial","melee","2d6","contundente",["Pesada","Duas Mãos"],"Topple"],
+  ["morningstar","Maça Estrela","Morningstar","martial","melee","1d8","perfurante",[],"Sap"],
+  ["pike","Pique","Pike","martial","melee","1d10","perfurante",["Pesada","Alcance","Duas Mãos"],"Push"],
+  ["rapier","Rapieira","Rapier","martial","melee","1d8","perfurante",["Acuidade"],"Vex"],
+  ["scimitar","Cimitarra","Scimitar","martial","melee","1d6","cortante",["Acuidade","Leve"],"Nick"],
+  ["shortsword","Espada Curta","Shortsword","martial","melee","1d6","perfurante",["Acuidade","Leve"],"Vex"],
+  ["trident","Tridente","Trident","martial","melee","1d8","perfurante",["Arremesso","Versátil"],"Topple","6/18 m","1d10"],
+  ["warhammer","Martelo de Guerra","Warhammer","martial","melee","1d8","contundente",["Versátil"],"Push","","1d10"],
+  ["warpick","Picareta de Guerra","War Pick","martial","melee","1d8","perfurante",["Versátil"],"Sap","","1d10"],
+  ["whip","Chicote","Whip","martial","melee","1d4","cortante",["Acuidade","Alcance"],"Slow"],
+  ["blowgun","Zarabatana","Blowgun","martial","ranged","1","perfurante",["Munição","Recarga"],"Vex","7,5/30 m"],
+  ["handcrossbow","Besta de Mão","Hand Crossbow","martial","ranged","1d6","perfurante",["Munição","Leve","Recarga"],"Vex","9/36 m"],
+  ["heavycrossbow","Besta Pesada","Heavy Crossbow","martial","ranged","1d10","perfurante",["Munição","Pesada","Recarga","Duas Mãos"],"Push","30/120 m"],
+  ["longbow","Arco Longo","Longbow","martial","ranged","1d8","perfurante",["Munição","Pesada","Duas Mãos"],"Slow","45/180 m"],
+  ["musket","Mosquete","Musket","martial","ranged","1d12","perfurante",["Munição","Recarga","Duas Mãos"],"Slow","12/36 m"],
+  ["pistol","Pistola","Pistol","martial","ranged","1d10","perfurante",["Munição","Recarga"],"Vex","9/27 m"]
+].map(([k, n, en, cat, kind, dmg, type, props, mastery, rng, vers]) => ({ k, n, en, cat, kind, dmg, type, props, mastery, rng: rng || "", vers: vers || "" }));
+// [chave, nome, original, tipo, CA, limite de DES (null = sem limite), FOR mínima, desvantagem em Furtividade]
+const ARMORS = [
+  ["padded","Armadura Acolchoada","Padded Armor","light",11,null,0,true],
+  ["leather","Armadura de Couro","Leather Armor","light",11,null,0,false],
+  ["studded","Couro Batido","Studded Leather","light",12,null,0,false],
+  ["hide","Gibão de Peles","Hide Armor","medium",12,2,0,false],
+  ["chainshirt","Camisão de Malha","Chain Shirt","medium",13,2,0,false],
+  ["scale","Brunea","Scale Mail","medium",14,2,0,true],
+  ["breastplate","Peitoral","Breastplate","medium",14,2,0,false],
+  ["halfplate","Meia-Armadura","Half Plate Armor","medium",15,2,0,true],
+  ["ringmail","Cota de Anéis","Ring Mail","heavy",14,0,0,true],
+  ["chainmail","Cota de Malha","Chain Mail","heavy",16,0,13,true],
+  ["splint","Cota de Talas","Splint Armor","heavy",17,0,15,true],
+  ["plate","Armadura de Placas","Plate Armor","heavy",18,0,15,true],
+  ["shield","Escudo","Shield","shield",2,null,0,false]
+].map(([k, n, en, type, ac, cap, str, stealth]) => ({ k, n, en, type, ac, cap, str, stealth }));
+const GEAR = [
+  ["Poção de Cura","Ação bônus para beber: recupera 2d4 + 2 PV.","2d4+2"],
+  ["Poção de Cura Maior","Recupera 4d4 + 4 PV.","4d4+4"],
+  ["Poção de Cura Superior","Recupera 8d4 + 8 PV.","8d4+8"],
+  ["Poção de Cura Suprema","Recupera 10d4 + 20 PV.","10d4+20"],
+  ["Mochila","Carrega o equipamento."],["Saco de Dormir",""],["Corda (15 m)","Corda de cânhamo ou seda."],
+  ["Tocha","Luz forte em 6 m e penumbra em mais 6 m por 1 hora."],["Rações (1 dia)",""],["Cantil","Leva água para um dia."],
+  ["Pederneira","Acende fogo."],["Lanterna Coberta","Luz por 6 horas com um frasco de óleo."],["Frasco de Óleo",""],
+  ["Kit de Curandeiro","10 usos: estabiliza uma criatura a 0 PV sem teste de Medicina."],["Pé de Cabra","Vantagem em testes de Força para forçar algo."],
+  ["Gancho de Escalada",""],["Vara (3 m)",""],["Barraca","Abriga duas pessoas."],["Algemas",""],["Corrente (3 m)",""],
+  ["Espelho",""],["Giz",""],["Vela","Luz por 1 hora."],["Papel ou Pergaminho",""],["Tinta e Pena",""],["Livro",""],
+  ["Bolsa de Componentes","Substitui componentes materiais sem custo."],["Foco Arcano","Cristal, orbe, bastão, cajado ou varinha."],
+  ["Foco Druídico","Ramo de visco, cajado de madeira ou totem."],["Símbolo Sagrado","Amuleto, emblema ou relicário."],["Grimório","Livro de magias do mago."],
+  ["Flechas (20)",""],["Virotes (20)",""],["Balas de Funda (20)",""],["Agulhas de Zarabatana (50)",""],["Balas de Arma de Fogo (10)",""],
+  ["Água Benta","Arremessada: 2d8 de dano radiante em corruptores ou mortos-vivos."],["Fogo Alquímico","Arremessado: o alvo pega fogo."],
+  ["Frasco de Ácido","Arremessado: 2d6 de dano ácido."],["Antitoxina","Vantagem contra Envenenado por 1 hora."],
+  ["Estrepes","Cobrem uma área e ferem quem passa."],["Esferas Metálicas","Cobrem o chão e podem derrubar quem passa."],
+  ["Ferramentas de Ladrão",""],["Kit de Disfarce",""],["Kit de Falsificação",""],["Kit de Herbalismo",""],["Kit de Venenos",""],
+  ["Suprimentos de Caligrafia",""],["Ferramentas de Carpinteiro",""],["Ferramentas de Ferreiro",""],["Utensílios de Cozinha",""],
+  ["Ferramentas de Navegador",""],["Ferramentas de Cartógrafo",""],["Jogo (dados, cartas…)",""],["Instrumento Musical",""],
+  ["Bolsa (pequena)",""],["Saco",""],["Roupas Comuns",""],["Roupas de Viagem",""],["Roupas Finas",""],["Manto",""],
+  ["Pacote de Aventureiro","Mochila, saco de dormir, cantil, rações, corda, tochas e pederneira."]
+].map(([n, notes, heal]) => ({ n, notes, heal: heal || "" }));
+
+// talentos: [chave, nome, original, categoria, atributos que podem subir (+1), resumo]
+const ANY6 = ["str","dex","con","int","wis","cha"], MENT = ["int","wis","cha"], SD = ["str","dex"];
+const FEATS = [
+  ["alert","Alerta","Alert","origin",null,"Soma o bônus de proficiência à iniciativa e pode trocar de posição na ordem com um aliado."],
+  ["crafter","Artesão","Crafter","origin",null,"Proficiência com três ferramentas de artesão, desconto em itens não mágicos e fabricação rápida."],
+  ["healer","Curandeiro","Healer","origin",null,"Com kit de curandeiro, faz uma criatura gastar um Dado de Vida para se curar; refaz 1s em dados de cura."],
+  ["lucky","Sortudo","Lucky","origin",null,"Pontos de Sorte iguais ao bônus de proficiência por descanso longo, para ter vantagem ou impor desvantagem."],
+  ["magic","Iniciado em Magia","Magic Initiate","origin",null,"Dois truques e uma magia de 1º círculo da lista de Clérigo, Druida ou Mago; a magia sai 1x por descanso longo sem espaço."],
+  ["musician","Músico","Musician","origin",null,"Proficiência com três instrumentos; ao fim de um descanso, dá Inspiração Heroica a aliados que ouvirem."],
+  ["savage","Atacante Selvagem","Savage Attacker","origin",null,"1x por turno, rola os dados de dano da arma duas vezes e usa o maior."],
+  ["skilled","Habilidoso","Skilled","origin",null,"Proficiência em três perícias ou ferramentas à sua escolha."],
+  ["brawler","Brigão de Taverna","Tavern Brawler","origin",null,"Golpe desarmado de 1d4 + FOR, refaz 1s no dano, empurra 1,5 m e usa armas improvisadas com proficiência."],
+  ["tough","Vigoroso","Tough","origin",null,"+2 PV por nível (somado no PV automático)."],
+  ["asi","Aumento de Valor de Atributo","Ability Score Improvement","general","asi","+2 em um atributo ou +1 em dois (máximo 20). Pode ser escolhido várias vezes."],
+  ["actor","Ator","Actor","general",["cha"],"Vantagem em Enganação e Atuação ao se passar por outra pessoa; imita vozes e sons."],
+  ["athlete","Atleta","Athlete","general",SD,"Deslocamento de escalada, levanta-se gastando só 1,5 m e salta com impulso curto."],
+  ["charger","Investida","Charger","general",SD,"Disparada dá +3 m; ao se mover em linha reta e acertar, +1d8 de dano ou empurra 3 m (1x por turno)."],
+  ["chef","Chef","Chef","general",["con","wis"],"Proficiência com utensílios de cozinha; refeições curam mais no descanso curto e petiscos dão PV temporários."],
+  ["crossbow","Especialista em Bestas","Crossbow Expert","general",["dex"],"Ignora Recarga das bestas, não tem desvantagem atirando de perto e soma o modificador no ataque extra com besta Leve."],
+  ["crusher","Esmagador","Crusher","general",["str","con"],"1x por turno, ao acertar com dano contundente, move o alvo 1,5 m; críticos dão vantagem aos ataques contra ele."],
+  ["defduelist","Duelista Defensivo","Defensive Duelist","general",["dex"],"Com arma de Acuidade, reação para somar o bônus de proficiência à CA contra um ataque corpo a corpo."],
+  ["dualwield","Combatente com Duas Armas","Dual Wielder","general",SD,"Ataque extra com a segunda arma mesmo sem a propriedade Leve, e saca ou guarda duas armas de uma vez."],
+  ["durable","Durável","Durable","general",["con"],"Vantagem em testes contra a morte; ação bônus para gastar um Dado de Vida e se curar."],
+  ["elemadept","Adepto Elemental","Elemental Adept","general",MENT,"Escolha um elemento: suas magias ignoram resistência a ele e tratam 1s no dano como 2."],
+  ["feytouched","Tocado pelas Fadas","Fey Touched","general",MENT,"Aprende Passo Nebuloso e uma magia de 1º círculo de adivinhação ou encantamento; cada uma 1x por descanso longo sem espaço."],
+  ["grappler","Agarrador","Grappler","general",SD,"Ao acertar golpe desarmado, causa dano e agarra; vantagem nos ataques contra quem você agarra."],
+  ["gwm","Mestre de Armas Grandes","Great Weapon Master","general",["str"],"Com arma Pesada, soma o bônus de proficiência ao dano; após crítico ou derrubar alguém, ataca de novo como ação bônus."],
+  ["heavilyarmored","Armadura Pesada","Heavily Armored","general",["str","con"],"Treinamento com armaduras pesadas."],
+  ["ham","Mestre de Armadura Pesada","Heavy Armor Master","general",["str","con"],"De armadura pesada, reduz dano contundente, cortante e perfurante em um valor igual ao bônus de proficiência."],
+  ["leader","Líder Inspirador","Inspiring Leader","general",["wis","cha"],"Após um descanso, até seis aliados ganham PV temporários iguais ao seu nível + modificador."],
+  ["keenmind","Mente Afiada","Keen Mind","general",["int"],"Proficiência (ou especialização) numa perícia de Inteligência; a ação Estudar sai como ação bônus."],
+  ["lightlyarmored","Armadura Leve","Lightly Armored","general",SD,"Treinamento com armaduras leves e escudos."],
+  ["mageslayer","Matador de Magos","Mage Slayer","general",SD,"Quem você fere tem desvantagem para manter concentração; 1x por descanso, passa numa salvaguarda mental que falhou."],
+  ["martialtraining","Treinamento com Armas Marciais","Martial Weapon Training","general",SD,"Proficiência com armas marciais."],
+  ["mam","Mestre de Armadura Média","Medium Armor Master","general",SD,"Com armadura média, soma até +3 de Destreza à CA (já calculado)."],
+  ["modarmored","Armadura Média","Moderately Armored","general",SD,"Treinamento com armaduras médias."],
+  ["mounted","Combatente Montado","Mounted Combatant","general",["str","dex","wis"],"Vantagem contra criaturas a pé menores que a montaria e protege a montaria de ataques e efeitos de área."],
+  ["observant","Observador","Observant","general",["int","wis"],"Proficiência (ou especialização) em Intuição, Investigação ou Percepção; a ação Procurar sai como ação bônus."],
+  ["piercer","Perfurador","Piercer","general",SD,"Refaz um dado de dano perfurante por turno; críticos perfurantes causam um dado extra."],
+  ["poisoner","Envenenador","Poisoner","general",["dex","int"],"Seus venenos ignoram resistência; prepara doses que causam 2d8 de dano de veneno e Envenenado."],
+  ["polearm","Mestre de Armas de Haste","Polearm Master","general",SD,"Ação bônus para atacar com o cabo (1d4); ataque de oportunidade quando entram no seu alcance."],
+  ["resilient","Resiliente","Resilient","general",ANY6,"Proficiência na salvaguarda do atributo que aumentou."],
+  ["ritual","Conjurador de Rituais","Ritual Caster","general",MENT,"Aprende magias rituais (quantidade = bônus de proficiência) e conjura uma delas rapidamente 1x por descanso longo."],
+  ["sentinel","Sentinela","Sentinel","general",SD,"Ataque de oportunidade quando um inimigo ataca um aliado perto de você; seus ataques de oportunidade zeram o deslocamento."],
+  ["shadowtouched","Tocado pelas Sombras","Shadow Touched","general",MENT,"Aprende Invisibilidade e uma magia de 1º círculo de ilusão ou necromancia; cada uma 1x por descanso longo sem espaço."],
+  ["sharpshooter","Atirador de Elite","Sharpshooter","general",["dex"],"Ignora meia cobertura e três quartos, sem desvantagem no alcance longo ou atirando de perto."],
+  ["shieldmaster","Mestre de Escudo","Shield Master","general",["str"],"Golpe com escudo para empurrar ou derrubar; reação para não sofrer dano ao passar numa salvaguarda de DES."],
+  ["skillexpert","Especialista em Perícias","Skill Expert","general",ANY6,"Proficiência numa perícia e especialização em outra."],
+  ["skulker","Espreitador","Skulker","general",["dex"],"Percepção às cegas de 3 m; errar ataques à distância não revela sua posição."],
+  ["slasher","Retalhador","Slasher","general",SD,"1x por turno, dano cortante reduz o deslocamento do alvo em 3 m; críticos dão desvantagem aos ataques dele."],
+  ["speedy","Veloz","Speedy","general",["dex","con"],"+3 m de deslocamento, Disparada ignora terreno difícil e ataques de oportunidade contra você têm desvantagem."],
+  ["spellsniper","Atirador Mágico","Spell Sniper","general",MENT,"Magias de ataque ignoram cobertura parcial, ganham +18 m de alcance e não têm desvantagem de perto."],
+  ["telekinetic","Telecinético","Telekinetic","general",MENT,"Mãos Mágicas invisível e com mais alcance; ação bônus para empurrar uma criatura 1,5 m."],
+  ["telepathic","Telepático","Telepathic","general",MENT,"Telepatia de 18 m e Detectar Pensamentos 1x por descanso longo sem espaço."],
+  ["warcaster","Conjurador de Guerra","War Caster","general",MENT,"Vantagem para manter concentração, conjura magias com as mãos ocupadas e como ataque de oportunidade."],
+  ["weaponmaster","Mestre de Armas","Weapon Master","general",SD,"Usa a maestria de mais um tipo de arma (pode trocar após descanso longo)."],
+  ["fs-archery","Estilo: Arquearia","Archery","style",null,"+2 nos ataques com armas à distância."],
+  ["fs-blind","Estilo: Combate às Cegas","Blind Fighting","style",null,"Percepção às cegas de 3 m."],
+  ["defense","Estilo: Defesa","Defense","style",null,"+1 na CA usando armadura (já calculado)."],
+  ["fs-dueling","Estilo: Duelo","Dueling","style",null,"+2 de dano com arma corpo a corpo em uma mão, sem outra arma."],
+  ["fs-gwf","Estilo: Combate com Armas Grandes","Great Weapon Fighting","style",null,"Com arma de Duas Mãos ou Versátil em duas mãos, 1s e 2s nos dados de dano contam como 3."],
+  ["fs-intercept","Estilo: Interceptação","Interception","style",null,"Reação: reduz em 1d10 + prof. o dano sofrido por um aliado a até 1,5 m."],
+  ["fs-protection","Estilo: Proteção","Protection","style",null,"Com escudo, reação para dar desvantagem a um ataque contra um aliado a até 1,5 m."],
+  ["fs-thrown","Estilo: Arma de Arremesso","Thrown Weapon Fighting","style",null,"+2 de dano com armas de arremesso e saca a arma ao atacar."],
+  ["fs-twf","Estilo: Combate com Duas Armas","Two-Weapon Fighting","style",null,"Soma o modificador de atributo ao dano do ataque extra com a segunda arma."],
+  ["fs-unarmed","Estilo: Combate Desarmado","Unarmed Fighting","style",null,"Golpe desarmado de 1d6 + FOR (1d8 com as mãos livres) e dano a quem você agarra."],
+  ["boon-prowess","Dádiva da Proeza em Combate","Boon of Combat Prowess","boon",ANY6,"1x por turno, transforma um ataque que errou em acerto."],
+  ["boon-dimension","Dádiva da Viagem Dimensional","Boon of Dimensional Travel","boon",ANY6,"Após a ação de Ataque ou Magia, teletransporta-se até 9 m."],
+  ["boon-energy","Dádiva da Resistência a Energia","Boon of Energy Resistance","boon",ANY6,"Resistência a dois tipos de dano e pode redirecionar esse dano a outra criatura."],
+  ["boon-fate","Dádiva do Destino","Boon of Fate","boon",ANY6,"Soma ou subtrai 2d4 do teste de d20 de uma criatura próxima (recarrega ao rolar iniciativa ou descansar)."],
+  ["boon-fortitude","Dádiva da Fortitude","Boon of Fortitude","boon",ANY6,"+40 PV máximos (some no campo de PV se não usar o automático) e curas recuperam um extra."],
+  ["boon-offense","Dádiva da Ofensiva Irresistível","Boon of Irresistible Offense","boon",["str","dex"],"Ignora resistência a dano contundente, cortante e perfurante; 20 natural causa dano extra."],
+  ["boon-recovery","Dádiva da Recuperação","Boon of Recovery","boon",ANY6,"Ao cair a 0 PV, recupera metade dos PV (1x por descanso longo) e tem uma reserva de 10d10 para se curar."],
+  ["boon-skill","Dádiva da Perícia","Boon of Skill","boon",ANY6,"Proficiência em todas as perícias e especialização em uma."],
+  ["boon-speed","Dádiva da Velocidade","Boon of Speed","boon",ANY6,"+9 m de deslocamento e Desengajar como ação bônus."],
+  ["boon-recall","Dádiva da Recordação de Magia","Boon of Spell Recall","boon",MENT,"1x por descanso longo, conjura uma magia de 1º a 4º círculo sem gastar espaço."],
+  ["boon-night","Dádiva do Espírito da Noite","Boon of the Night Spirit","boon",ANY6,"Na penumbra ou escuridão, fica Invisível como ação bônus e tem resistência a quase todo dano."],
+  ["boon-truesight","Dádiva da Visão Verdadeira","Boon of Truesight","boon",ANY6,"Visão verdadeira de 18 m."]
+].map(([k, n, en, cat, abil, text]) => ({ k, n, en, cat, abil, text }));
+const FEAT_CATS = [["origin","Origem"],["general","Gerais (nível 4+)"],["style","Estilos de luta"],["boon","Dádivas épicas (nível 19+)"]];
+
+/* ---------- regras derivadas do equipamento e talentos ---------- */
+function featKeysOf(c){
+  const bg = BACKGROUNDS[c.background];
+  const k = bg ? [featKeyOf(bg[1])] : [];
+  for (const f of c.feats) if (f.featKey) k.push(f.featKey);
+  return k;
+}
+function computeAC(c){
+  const arm = c.items.find(i => i.kind === "armor" && i.equipped), sh = c.items.find(i => i.kind === "shield" && i.equipped);
+  const dex = cm(c,"dex"); let best;
+  if (arm) {
+    const a = ARMORS.find(x => x.k === arm.ref) || { ac:10, cap:null, type:"light" };
+    let cap = a.cap; if (a.type === "medium" && c.featKeys.includes("mam")) cap = 3;
+    best = a.ac + (cap === null ? dex : Math.min(dex, cap));
+    if (c.featKeys.includes("defense")) best += 1;
+  } else {
+    const opts = [10 + dex], sb = subOf(c);
+    if (c.cls === "Bárbaro") opts.push(10 + dex + cm(c,"con"));
+    if (c.cls === "Monge" && !sh) opts.push(10 + dex + cm(c,"wis"));
+    if (sb && sb.name === "Feitiçaria Dracônica" && c.level >= 3) opts.push(10 + dex + cm(c,"cha"));
+    if (sb && sb.name === "Colégio da Dança" && c.level >= 3 && !sh) opts.push(10 + dex + cm(c,"cha"));
+    best = Math.max(...opts);
+  }
+  if (sh) best += 2;
+  return best + (+c.acBonus || 0);
+}
+function weaponProf(c, w){
+  if (w.cat === "simple") return true;
+  if (c.featKeys.includes("martialtraining")) return true;
+  const sb = subOf(c); if (sb && sb.name === "Colégio da Bravura" && c.level >= 3) return true;
+  const t = (CLASS_DATA[c.cls] || {}).weapons; if (!t) return true;
+  if (t.includes("Acuidade ou Leve")) return w.props.includes("Acuidade") || w.props.includes("Leve");
+  if (t.includes("propriedade Leve")) return w.props.includes("Leve");
+  return t.includes("marciais");
+}
+const hasMastery = c => ["Bárbaro","Guerreiro","Paladino","Patrulheiro","Ladino"].includes(c.cls) || c.featKeys.includes("weaponmaster");
+function weaponAbil(c, w){
+  if (w.props.includes("Acuidade")) return "fin";
+  if (w.kind === "ranged") return "dex";
+  if (c.cls === "Monge" && (w.cat === "simple" || w.props.includes("Leve"))) return "fin";
+  return "str";
+}
+function weaponProps(w){
+  return w.props.map(p => p === "Versátil" && w.vers ? `Versátil (${w.vers})` : (p === "Arremesso" || p === "Munição") && w.rng ? `${p} (${w.rng})` : p).join(", ");
+}
+function weaponText(w){
+  return [`${w.dmg} ${w.type}`, weaponProps(w), "Maestria: " + MASTERY_INFO[w.mastery][0]].filter(Boolean).join(". ") + ".";
+}
+function attackFromWeapon(c, w, itemId){
+  return { id: uid(), itemId, name: w.n, abil: weaponAbil(c, w), prof: weaponProf(c, w), bonus: 0, dmg: w.dmg, addMod: true, dmgType: w.type,
+    mastery: hasMastery(c) ? MASTERY_INFO[w.mastery][0] : "",
+    notes: [weaponProps(w), hasMastery(c) ? MASTERY_INFO[w.mastery][1] : ""].filter(Boolean).join(". ") };
+}
+
+/* ================= ASSISTENTES: CRIAR PERSONAGEM E SUBIR DE NÍVEL ================= */
+const STD_ARRAY = [15,14,13,12,10,8];
+const PB_COST = {8:0,9:1,10:2,11:3,12:4,13:5,14:7,15:9};
+const CLASS_PRIO = {
+  "Bárbaro":["str","con","dex","wis","cha","int"], "Bardo":["cha","dex","con","wis","int","str"], "Bruxo":["cha","con","dex","wis","int","str"],
+  "Clérigo":["wis","con","str","dex","cha","int"], "Druida":["wis","con","dex","int","cha","str"], "Feiticeiro":["cha","con","dex","wis","int","str"],
+  "Guerreiro":["str","con","dex","wis","cha","int"], "Ladino":["dex","con","int","wis","cha","str"], "Mago":["int","con","dex","wis","cha","str"],
+  "Monge":["dex","wis","con","str","int","cha"], "Paladino":["str","cha","con","wis","dex","int"], "Patrulheiro":["dex","wis","con","str","int","cha"], "Outra":ANY6
+};
+const STYLE_AT = { "Guerreiro":1, "Paladino":2, "Patrulheiro":2 };
+const EXPERTISE_AT = { "Ladino":{1:2,6:2}, "Bardo":{2:2,9:2}, "Patrulheiro":{2:1,9:2}, "Mago":{2:1} };
+const SCHOLAR = ["arca","hist","inve","medi","natu","reli"];
+const ORDERS = { "Clérigo":["Ordem Divina",["Protetor","Taumaturgo"]], "Druida":["Ordem Primal",["Mágico","Guardião"]] };
+const abName = k => ABIL.find(a => a[0] === k)[1];
+const selAbil = (name, list, cur, c) => `<select name="${name}">${list.map(a => `<option value="${a}" ${a === cur ? "selected" : ""}>${abName(a)}${c ? " (" + c.abilities[a] + ")" : ""}</option>`).join("")}</select>`;
+function casterType(c){ const sb = subOf(c); return sb && sb.caster === "third" ? "third" : (CLASSES[c.cls] || CLASSES.Outra)[2]; }
+function autoSlots(c){
+  const type = casterType(c); if (!type || c.slotsAuto === false) return;
+  const arr = type === "full" ? FULL[c.level] : type === "half" ? HALF[c.level] : type === "third" ? THIRD[c.level] : pactSlots(c.level);
+  c.spell.slots.forEach((s, i) => { s.max = arr[i] || 0; s.used = Math.min(s.used, s.max); });
+}
+function readForm(){ const o = {}; dlgBody.querySelectorAll("[name]").forEach(el => { if (el.type === "checkbox") { (o[el.name] = o[el.name] || []); if (el.checked && !el.disabled) o[el.name].push(el.value); } else if (el.type === "radio") { if (el.checked) o[el.name] = el.value; } else o[el.name] = el.value; }); return o; }
+function featRowsFor(c, cat){ return FEATS.filter(f => f.cat === cat); }
+function featBlock(prefix, c, cats, title){
+  const list = FEATS.filter(f => cats.includes(f.cat));
+  return `<div class="panel" style="margin:10px 0"><h3 style="margin-top:0">${title}</h3>
+    ${fld("Escolha", `<select name="${prefix}feat" data-desc="${prefix}">${list.map(f => `<option value="${f.k}">${esc(f.n)}</option>`).join("")}</select>`)}
+    <p class="muted small" id="${prefix}desc">${esc(list[0].text)}</p>
+    <div class="grid2">
+      ${fld("Modo (Aumento de Atributo)", `<select name="${prefix}mode"><option value="2">+2 em um</option><option value="11">+1 em dois</option></select>`)}
+      <span></span>
+      ${fld("Atributo", selAbil(prefix + "a1", ANY6, CLASS_PRIO[c.cls][0], c))}
+      ${fld("Segundo atributo (+1 em dois)", selAbil(prefix + "a2", ANY6, CLASS_PRIO[c.cls][1], c))}
+    </div></div>`;
+}
+document.addEventListener("change", e => {
+  const p = e.target.dataset && e.target.dataset.desc; if (p === undefined) return;
+  const f = FEATS.find(x => x.k === e.target.value), el = document.getElementById(p + "desc");
+  if (f && el) el.textContent = (f.abil === "asi" ? "" : f.abil ? `+1 em ${f.abil.length === 6 ? "qualquer atributo" : f.abil.map(k => ABN[k]).join(" ou ")}. ` : "Não aumenta atributo. ") + f.text;
+});
+// aplica um talento escolhido no assistente; devolve mensagem de erro ou ""
+function applyFeatChoice(c, o, prefix, lvl){
+  const f = FEATS.find(x => x.k === o[prefix + "feat"]); if (!f) return "";
+  const max = f.cat === "boon" ? 30 : 20, done = [];
+  const inc = (a, n) => { const b = c.abilities[a]; c.abilities[a] = Math.min(max, b + n); done.push(`+${c.abilities[a] - b} ${ABN[a]}`); };
+  if (f.abil === "asi") {
+    if (o[prefix + "mode"] === "11") { if (o[prefix + "a1"] === o[prefix + "a2"]) return "No +1 em dois, escolha atributos diferentes."; inc(o[prefix + "a1"], 1); inc(o[prefix + "a2"], 1); }
+    else inc(o[prefix + "a1"], 2);
+  } else if (f.abil) {
+    if (!f.abil.includes(o[prefix + "a1"])) return `${f.n} só aumenta ${f.abil.map(k => ABN[k]).join(" ou ")}. Ajuste o atributo.`;
+    inc(o[prefix + "a1"], 1);
+    if (f.k === "resilient") c.saves[o[prefix + "a1"]] = true;
+  }
+  c.feats.push({ id: uid(), src: "Talento", lvl, name: f.n, text: f.text + ` (${f.en})` + (done.length ? ` Aplicado: ${done.join(", ")}.` : ""), featKey: f.k });
+  return "";
+}
+function checkFeatChoice(c, o, prefix){
+  const f = FEATS.find(x => x.k === o[prefix + "feat"]); if (!f) return "";
+  if (f.abil === "asi" && o[prefix + "mode"] === "11" && o[prefix + "a1"] === o[prefix + "a2"]) return "No +1 em dois, escolha atributos diferentes.";
+  if (f.abil && f.abil !== "asi" && !f.abil.includes(o[prefix + "a1"])) return `${f.n} só aumenta ${f.abil.map(k => ABN[k]).join(" ou ")}. Ajuste o atributo.`;
+  return "";
+}
+
+/* ---------- criar personagem ---------- */
+let wiz = null;
+function startCreate(){
+  wiz = { step: 0, d: { name:"", cls:"Guerreiro", target:1, species:"Humano", lineage:"", size:"Médio", bg:"Soldado", bgMode:"21", method:"std", rolled:null, pb:{str:8,dex:8,con:8,int:8,wis:8,cha:8}, man:{str:10,dex:10,con:10,int:10,wis:10,cha:10} } };
+  wiz.d.assign = defaultAssign(wiz.d.cls, STD_ARRAY);
+  renderWiz();
+}
+function defaultAssign(cls, vals){ const order = CLASS_PRIO[cls] || ANY6, sorted = vals.slice().sort((a, b) => b - a), o = {}; order.forEach((k, i) => o[k] = sorted[i]); return o; }
+const WIZ_STEPS = ["Começo","Espécie","Antecedente","Atributos","Perícias","Escolhas"];
+function wizHeader(){ return `<p class="muted small" style="margin:0 0 4px">Passo ${wiz.step + 1} de ${WIZ_STEPS.length}: ${WIZ_STEPS[wiz.step]}</p>`; }
+function wizNav(last){ return `<div class="acts">${wiz.step ? `<button type="button" class="btn ghost" data-act="wiz-back" style="margin-right:auto">Voltar</button>` : `<button type="button" class="btn ghost" data-act="wiz-blank" style="margin-right:auto">Ficha em branco</button>`}<button type="button" class="btn ghost" data-act="dlg-close">Cancelar</button><button type="button" class="btn gold" data-act="${last ? "wiz-finish" : "wiz-next"}">${last ? "Criar personagem" : "Próximo"}</button></div>`; }
+function bgOrder(d){ const pr = CLASS_PRIO[d.cls] || ANY6; return BACKGROUNDS[d.bg][0].slice().sort((a, b) => pr.indexOf(a) - pr.indexOf(b)); }
+function bgBonus(d){
+  const bg = BACKGROUNDS[d.bg], b = {}; if (!bg) return b;
+  if (d.bgMode === "111") bg[0].forEach(k => b[k] = 1);
+  else { const o = bgOrder(d), p2 = d.bgPlus2 || o[0], p1 = d.bgPlus1 || o[1]; b[p2] = 2; b[p1] = (b[p1] || 0) + 1; }
+  return b;
+}
+function baseScores(d){ return d.method === "pb" ? d.pb : d.method === "man" ? d.man : d.assign; }
+function renderWiz(){
+  const d = wiz.d, s = wiz.step, c0 = { abilities: baseScores(d) };
+  let h = `<h2>Novo personagem</h2>` + wizHeader();
+  if (s === 0) {
+    h += fld("Nome", inp("name", d.name, 'maxlength="60" autocomplete="off" placeholder="Como se chama?"')) +
+      `<div class="grid2">${fld("Classe", `<select name="cls" data-rerender>${Object.keys(CLASS_DATA).map(k => `<option ${k === d.cls ? "selected" : ""}>${k}</option>`).join("")}</select>`)}
+      ${fld("Nível inicial", inp("target", d.target, 'type="number" inputmode="numeric" min="1" max="20"'))}</div>` +
+      `<p class="muted small">${esc(d.cls)}: Dado de Vida d${CLASSES[d.cls][0]}, salvaguardas de ${CLASSES[d.cls][1].map(k => abName(k)).join(" e ")}. ${esc(CLASS_DATA[d.cls].armor ? "Armaduras: " + CLASS_DATA[d.cls].armor + "." : "")}</p>`;
+  } else if (s === 1) {
+    const L = LINEAGES[d.species], sp = SPECIES[d.species];
+    h += fld("Espécie", `<select name="species" data-rerender>${Object.keys(SPECIES).map(k => `<option ${k === d.species ? "selected" : ""}>${k}</option>`).join("")}</select>`) +
+      (L ? fld(L.label, `<select name="lineage"><option value="">Escolha…</option>${Object.keys(L.opts).map(k => `<option ${k === d.lineage ? "selected" : ""}>${esc(k)}</option>`).join("")}</select>`) : "") +
+      (sp.size.length > 1 ? fld("Tamanho", `<select name="size">${sp.size.map(z => `<option ${z === d.size ? "selected" : ""}>${z}</option>`).join("")}</select>`) : "") +
+      `<p class="muted small">Traços: ${sp.traits.map(t => t[1]).join(", ")}. Deslocamento ${String(sp.speed).replace(".", ",")} m.</p>`;
+  } else if (s === 2) {
+    const bg = BACKGROUNDS[d.bg], fk = featKeyOf(bg[1]);
+    h += fld("Antecedente", `<select name="bg" data-rerender>${Object.keys(BACKGROUNDS).map(k => `<option ${k === d.bg ? "selected" : ""}>${k}</option>`).join("")}</select>`) +
+      `<p class="small">Perícias: <b>${bg[2].map(skName).join(" e ")}</b>. Ferramenta: ${esc(bg[3])}. Talento de origem: <b>${esc(ORIGIN_FEATS[fk][0])}</b>.</p>` +
+      fld("Aumentos de atributo", `<select name="bgMode" data-rerender><option value="21" ${d.bgMode === "21" ? "selected" : ""}>+2 em um e +1 em outro</option><option value="111" ${d.bgMode === "111" ? "selected" : ""}>+1 em ${bg[0].map(k => ABN[k]).join(", ")}</option></select>`) +
+      (d.bgMode === "21" ? `<div class="grid2">${fld("+2 em", selAbil("bgPlus2", bg[0], d.bgPlus2 || bgOrder(d)[0]))}${fld("+1 em", selAbil("bgPlus1", bg[0], d.bgPlus1 || bgOrder(d)[1]))}</div>` : "");
+  } else if (s === 3) {
+    const bon = bgBonus(d), base = baseScores(d);
+    h += fld("Método", `<select name="method" data-rerender>${[["std","Conjunto padrão (15, 14, 13, 12, 10, 8)"],["pb","Compra de pontos (27)"],["roll","Rolar 4d6 (descarta o menor)"],["man","Digitar os valores"]].map(([v, l]) => `<option value="${v}" ${v === d.method ? "selected" : ""}>${l}</option>`).join("")}</select>`);
+    if (d.method === "pb") {
+      const spent = ANY6.reduce((a, k) => a + PB_COST[d.pb[k]], 0);
+      h += `<p><b>${27 - spent}</b> pontos restantes (valores de 8 a 15).</p>` + ANY6.map(k => `<div class="row" style="justify-content:space-between;min-height:50px"><span>${abName(k)}</span><div class="stepper"><button type="button" data-act="pb-adj" data-k="${k}" data-d="-1" aria-label="Diminuir ${abName(k)}">−</button><output>${d.pb[k]}</output><button type="button" data-act="pb-adj" data-k="${k}" data-d="1" aria-label="Aumentar ${abName(k)}">+</button></div><span class="muted" style="min-width:86px;text-align:right">${bon[k] ? "+" + bon[k] + " = " + (d.pb[k] + bon[k]) : ""}</span></div>`).join("");
+    } else if (d.method === "man") {
+      h += `<div class="grid2">${ANY6.map(k => fld(abName(k) + (bon[k] ? ` (+${bon[k]} do antecedente)` : ""), `<input name="man_${k}" type="number" inputmode="numeric" min="3" max="20" value="${d.man[k]}">`)).join("")}</div>`;
+    } else {
+      const vals = d.method === "roll" ? d.rolled : STD_ARRAY;
+      if (vals && !d.assignIdx) d.assignIdx = idxFor(d.assign, vals);
+      if (d.method === "roll") h += `<p><button type="button" class="btn gold" data-act="wiz-roll">${d.rolled ? "Rolar de novo" : "Rolar atributos"}</button> ${d.rolled ? `<span class="muted">Resultados: ${d.rolled.join(", ")}</span>` : ""}</p>`;
+      if (vals) h += `<p class="muted small">Distribuição sugerida para ${esc(d.cls)}; troque à vontade (cada valor uma vez).</p><div class="grid2">${ANY6.map(k => fld(abName(k) + (bon[k] ? ` (+${bon[k]})` : ""), `<select name="as_${k}">${vals.map((v, i) => `<option value="${i}" ${d.assignIdx && d.assignIdx[k] === i ? "selected" : ""}>${v}</option>`).join("")}</select>`)).join("")}</div>`;
+    }
+  } else if (s === 4) {
+    const cd = CLASS_DATA[d.cls], bgSk = BACKGROUNDS[d.bg][2], picked = d.sk || [];
+    h += `<p>Escolha <b>${cd.skills[0]}</b> perícia(s) de ${esc(d.cls)}. As do antecedente já estão marcadas.</p><div class="list" style="gap:0">` +
+      cd.skills[1].map(k => { const bgHas = bgSk.includes(k); return `<label class="chk"><input type="checkbox" name="sk" value="${k}" ${bgHas || picked.includes(k) ? "checked" : ""} ${bgHas ? "disabled" : ""}> ${skName(k)}${bgHas ? ' <span class="muted small">(antecedente)</span>' : ""}</label>`; }).join("") + `</div>`;
+    if (d.species === "Humano") h += fld("Habilidoso (Humano): uma perícia à escolha", `<select name="spSkill">${SKILLS.map(x => `<option value="${x[0]}" ${d.spSkill === x[0] ? "selected" : ""}>${x[1]}</option>`).join("")}</select>`);
+    if (d.species === "Elfo") h += fld("Sentidos Aguçados (Elfo)", `<select name="spSkill">${["insi","perc","surv"].map(k => `<option value="${k}" ${d.spSkill === k ? "selected" : ""}>${skName(k)}</option>`).join("")}</select>`);
+  } else if (s === 5) {
+    const any = wizL1Choices(d);
+    h += any || `<p>Nenhuma escolha extra no 1º nível para essa combinação. Toque em <b>Criar personagem</b>.</p>`;
+    h += `<p class="muted small">${d.target > 1 ? `Depois de criar, você vai subir do nível 1 ao ${d.target}, escolhendo o que cada nível pede.` : "Equipamento: use o Catálogo na aba Itens depois de criar."}</p>`;
+  }
+  openDlg(h + wizNav(s === WIZ_STEPS.length - 1));
+}
+function wizL1Choices(d){
+  let h = "";
+  if (STYLE_AT[d.cls] === 1) h += fld("Estilo de luta", `<select name="style">${FEATS.filter(f => f.cat === "style").map(f => `<option value="${f.k}" ${d.style === f.k ? "selected" : ""}>${esc(f.n)}</option>`).join("")}</select>`);
+  if (ORDERS[d.cls]) h += fld(ORDERS[d.cls][0], `<select name="order">${ORDERS[d.cls][1].map(o => `<option ${d.order === o ? "selected" : ""}>${o}</option>`).join("")}</select>`);
+  if (d.species === "Humano") h += fld("Versátil (Humano): talento de origem", `<select name="humanFeat">${FEATS.filter(f => f.cat === "origin").map(f => `<option value="${f.k}" ${d.humanFeat === f.k ? "selected" : ""}>${esc(f.n)}</option>`).join("")}</select>`);
+  const ex = (EXPERTISE_AT[d.cls] || {})[1];
+  if (ex) {
+    const prof = [...new Set([...(d.sk || []), ...BACKGROUNDS[d.bg][2], d.spSkill].filter(Boolean))];
+    h += `<p><b>Especialização:</b> escolha ${ex} perícia(s) em que é proficiente.</p>` + prof.map(k => `<label class="chk"><input type="checkbox" name="exp" value="${k}" ${(d.exp || []).includes(k) ? "checked" : ""}> ${skName(k)}</label>`).join("");
+  }
+  return h;
+}
+function wizCollect(){
+  const o = readForm(), d = wiz.d, s = wiz.step;
+  if (s === 0) { d.name = (o.name || "").trim(); const nc = o.cls !== d.cls; d.cls = o.cls; d.target = clampInt(o.target, 1, 20); if (nc) { d.assign = defaultAssign(d.cls, d.rolled || STD_ARRAY); d.assignIdx = null; d.sk = []; } }
+  if (s === 1) { const ns = o.species !== d.species; d.species = o.species; d.lineage = ns ? "" : (o.lineage || ""); if (o.size) d.size = o.size; if (ns) { d.size = SPECIES[d.species].size[0]; d.spSkill = ""; } }
+  if (s === 2) { const nb = o.bg !== d.bg; d.bg = o.bg; d.bgMode = o.bgMode || "21"; d.bgPlus2 = nb ? "" : o.bgPlus2; d.bgPlus1 = nb ? "" : o.bgPlus1; }
+  if (s === 3) {
+    const nm = o.method !== d.method; d.method = o.method;
+    if (!nm && (d.method === "std" || d.method === "roll")) {
+      const vals = d.method === "roll" ? d.rolled : STD_ARRAY;
+      if (vals) { const idx = {}; ANY6.forEach(k => idx[k] = +o["as_" + k]); d.assignIdx = idx; d.assign = {}; ANY6.forEach(k => d.assign[k] = vals[idx[k]]); }
+    }
+    if (!nm && d.method === "man") ANY6.forEach(k => d.man[k] = clampInt(o["man_" + k], 3, 20));
+    if (nm) { const vals = d.method === "roll" ? d.rolled : STD_ARRAY; if (vals) { d.assign = defaultAssign(d.cls, vals); d.assignIdx = idxFor(d.assign, vals); } }
+  }
+  if (s === 4) { d.sk = (o.sk || []); d.spSkill = o.spSkill || ""; }
+  if (s === 5) { d.style = o.style; d.order = o.order; d.humanFeat = o.humanFeat; d.exp = o.exp || []; }
+}
+function idxFor(assign, vals){ const used = new Set(), idx = {}; ANY6.forEach(k => { const i = vals.findIndex((v, j) => v === assign[k] && !used.has(j)); used.add(i); idx[k] = i; }); return idx; }
+function wizValidate(){
+  const d = wiz.d, s = wiz.step;
+  if (s === 1 && LINEAGES[d.species] && !d.lineage) return `Escolha: ${LINEAGES[d.species].label.toLowerCase()}.`;
+  if (s === 2 && d.bgMode === "21" && (d.bgPlus2 || bgOrder(d)[0]) === (d.bgPlus1 || bgOrder(d)[1])) return "O +2 e o +1 precisam ser em atributos diferentes.";
+  if (s === 3) {
+    if (d.method === "roll" && !d.rolled) return "Toque em Rolar atributos primeiro.";
+    if (d.method === "std" || d.method === "roll") { const idx = Object.values(d.assignIdx || idxFor(d.assign, d.method === "roll" ? d.rolled : STD_ARRAY)); if (new Set(idx).size !== 6) return "Use cada valor uma única vez."; }
+    if (d.method === "pb" && ANY6.reduce((a, k) => a + PB_COST[d.pb[k]], 0) > 27) return "Você gastou mais de 27 pontos.";
+  }
+  if (s === 4) { const n = CLASS_DATA[d.cls].skills[0]; if (d.sk.length !== n) return `Escolha exatamente ${n} perícia(s) de classe (marcadas: ${d.sk.length}).`; }
+  if (s === 5) { const ex = (EXPERTISE_AT[d.cls] || {})[1]; if (ex && d.exp.length !== ex) return `Escolha ${ex} perícia(s) para a especialização.`; }
+  return "";
+}
+function wizFinish(){
+  const d = wiz.d, c = blank();
+  c.name = d.name || "Sem nome"; c.cls = d.cls; c.level = 1;
+  const k = CLASSES[c.cls]; c.saves = Object.fromEntries(k[1].map(x => [x, true])); if (k[3]) c.spell.abil = k[3];
+  c.species = d.species; c.lineage = d.lineage; c.size = d.size; c.background = d.bg;
+  const base = baseScores(d), bon = bgBonus(d);
+  ANY6.forEach(a => c.abilities[a] = Math.min(20, base[a] + (bon[a] || 0)));
+  d.sk.forEach(s => c.skills[s] = 1); if (d.spSkill) c.skills[d.spSkill] = 1;
+  if (d.style) { const f = FEATS.find(x => x.k === d.style); c.feats.push({ id: uid(), src:"Talento", lvl:1, name:f.n, text:f.text + ` (${f.en})`, featKey:f.k }); }
+  if (d.humanFeat) { const f = FEATS.find(x => x.k === d.humanFeat); c.feats.push({ id: uid(), src:"Talento", lvl:1, name:f.n + " (Versátil)", text:f.text + ` (${f.en})`, featKey:f.k }); }
+  if (d.order) c.feats.push({ id: uid(), src:"Classe", lvl:1, name:`${ORDERS[c.cls][0]}: ${d.order}`, text:`Escolha feita na criação: ${d.order}.` });
+  applyPresets(c, { speciesChanged: true });
+  (d.exp || []).forEach(s => c.skills[s] = 2);
+  autoSlots(c); syncDerived(c); c.hp.cur = c.hp.max;
+  store.chars[c.id] = c; store.cur = c.id; save(c); closeDlg(); render();
+  const target = d.target; wiz = null;
+  if (target > 1) startLevelUp(target);
+  else showToast({ label: c.name, total: "✓", detail: "Personagem criado. Adicione equipamento pelo Catálogo na aba Itens." });
+}
+
+/* ---------- subir de nível ---------- */
+let lvlTarget = 0;
+function startLevelUp(target){ lvlTarget = target || ch().level + 1; dlgLevelUp(); }
+function dlgLevelUp(){
+  const c = ch(), L = c.level + 1, cd = CLASS_DATA[c.cls];
+  if (!cd || c.level >= 20) { showToast({ label:"Subir de nível", total:"✗", detail: c.level >= 20 ? "Já está no nível 20." : "Escolha uma classe nos dados do personagem primeiro.", fumble:true }); return; }
+  const next = Object.assign({}, c, { level: L }), oldKeys = new Set(presetFeatures(c).map(f => f.key));
+  const news = presetFeatures(next).filter(f => !oldKeys.has(f.key) && f.key !== "cls:skills");
+  const d = hitDie(c), avg = d / 2 + 1 + cm(c,"con");
+  let h = `<h2>Subir para o nível ${L}</h2>${lvlTarget > L ? `<p class="muted small">Indo até o nível ${lvlTarget}.</p>` : ""}
+    <h3>O que você ganha</h3>
+    ${news.length ? `<ul style="margin:0;padding-left:20px">${news.map(f => `<li><b>${esc(f.key.startsWith("sub:") && f.lvl === cd.sub[0] ? "Subclasse (escolha abaixo)" : f.name)}</b>${f.src === "Espécie" ? " (espécie)" : ""}</li>`).join("")}</ul>` : `<p class="muted">Nenhuma característica nova (além do bônus de proficiência ${prof(L) > prof(c.level) ? "que sobe para " + sg(prof(L)) : ""}).</p>`}
+    ${prof(L) > prof(c.level) ? `<p class="small">Bônus de proficiência sobe para <b>${sg(prof(L))}</b>.</p>` : ""}
+    <h3>Pontos de vida</h3>
+    <label class="chk"><input type="radio" name="hp" value="avg" checked> Média: +${Math.max(1, avg)} PV</label>
+    <label class="chk"><input type="radio" name="hp" value="roll"> Rolar 1d${d} ${sg(cm(c,"con"))}</label>`;
+  if (L === cd.sub[0] && !subOf(c)) {
+    const subs = SUBCLASS_DATA[c.cls] || {};
+    h += `<h3>Subclasse</h3>` + fld("Escolha", `<select name="sub"><option value="">Decidir depois</option>${Object.keys(subs).map(k => `<option>${esc(k)}</option>`).join("")}</select>`) +
+      `<div class="list small">${Object.entries(subs).map(([k, v]) => `<div><b>${esc(k)}:</b> ${v.feats.filter(f => f[0] === L).map(f => f[1]).join(", ")}</div>`).join("")}</div>`;
+  }
+  if (cd.asi.includes(L)) h += featBlock("asi_", c, ["general"], `Aumento de atributo ou talento (nível ${L})`);
+  if (L === 19) h += featBlock("boon_", c, ["boon"], "Dádiva Épica");
+  if (STYLE_AT[c.cls] === L) h += `<h3>Estilo de luta</h3>` + fld("Escolha", `<select name="style">${FEATS.filter(f => f.cat === "style").map(f => `<option value="${f.k}">${esc(f.n)}</option>`).join("")}</select>`);
+  if (c.cls === "Bárbaro" && L === 3) h += `<h3>Conhecimento Primitivo</h3>` + fld("Perícia extra", `<select name="extraSkill">${CLASS_DATA["Bárbaro"].skills[1].filter(k => !c.skills[k]).map(k => `<option value="${k}">${skName(k)}</option>`).join("")}</select>`);
+  const ex = (EXPERTISE_AT[c.cls] || {})[L];
+  if (ex) {
+    const pool = SKILLS.map(s => s[0]).filter(k => c.skills[k] === 1 && (c.cls !== "Mago" || SCHOLAR.includes(k)));
+    h += `<h3>${c.cls === "Mago" ? "Erudito" : "Especialização"}</h3><p class="small">Escolha ${ex} perícia(s) em que é proficiente.</p>` +
+      (pool.length ? pool.map(k => `<label class="chk"><input type="checkbox" name="exp" value="${k}"> ${skName(k)}</label>`).join("") : `<p class="muted small">Você não tem perícias elegíveis; marque a proficiência na aba Ficha e ajuste depois.</p>`);
+  }
+  if (casterType(next)) h += `<p class="small muted">Os espaços de magia serão atualizados pela tabela.${c.cls === "Bruxo" ? "" : " Lembre de preparar novas magias na aba Magias."}</p>`;
+  h += `<div class="acts">${lvlTarget > L ? `<button type="button" class="btn ghost" data-act="lvl-stop" style="margin-right:auto">Parar aqui</button>` : ""}<button type="button" class="btn ghost" data-act="dlg-close">Cancelar</button><button type="button" class="btn gold" data-act="lvl-confirm">Subir para ${L}</button></div>`;
+  openDlg(h);
+}
+function confirmLevelUp(){
+  const c = ch(), o = readForm(), L = c.level + 1, cd = CLASS_DATA[c.cls];
+  const ex = (EXPERTISE_AT[c.cls] || {})[L];
+  if (cd.asi.includes(L)) { const e = checkFeatChoice(c, o, "asi_"); if (e) { dlgError(e); return; } }
+  if (L === 19) { const e = checkFeatChoice(c, o, "boon_"); if (e) { dlgError(e); return; } }
+  if (ex && (o.exp || []).length > ex) { dlgError(`Escolha no máximo ${ex} perícia(s) para a especialização.`); return; }
+  const hpChoice = o.hp || "avg";
+  const oldMax = c.hp.max, msgs = [];
+  c.level = L; c.hdUsed = Math.min(c.hdUsed, c.level);
+  if (o.sub) { c.subclass = o.sub; msgs.push("Subclasse: " + o.sub); }
+  if (cd.asi.includes(L)) applyFeatChoice(c, o, "asi_", L);
+  if (L === 19) applyFeatChoice(c, o, "boon_", L);
+  if (o.style) { const f = FEATS.find(x => x.k === o.style); c.feats.push({ id: uid(), src:"Talento", lvl:L, name:f.n, text:f.text + ` (${f.en})`, featKey:f.k }); }
+  if (o.extraSkill) c.skills[o.extraSkill] = 1;
+  (o.exp || []).forEach(k => c.skills[k] = 2);
+  applyPresets(c, { speciesChanged: false });
+  autoSlots(c);
+  if (hpChoice === "roll" || !c.hpAuto) {
+    const per = ((SPECIES[c.species] || {}).hpPerLevel || 0) + (featKeysOf(c).includes("tough") ? 2 : 0);
+    const sb = subOf(c), drac = sb && sb.hpPerLevelFrom3 ? (L === 3 ? 3 : L > 3 ? 1 : 0) : 0;
+    const r = hpChoice === "roll" ? die(hitDie(c)) : hitDie(c) / 2 + 1;
+    const gain = Math.max(1, r + cm(c,"con")) + per + drac;
+    c.hpAuto = false; c.hp.max = oldMax + gain; c.hp.cur += gain;
+    msgs.push(`+${gain} PV${hpChoice === "roll" ? ` (rolou ${r} no d${hitDie(c)})` : ""}`);
+  } else { syncDerived(c); c.hp.cur += c.hp.max - oldMax; msgs.push(`+${c.hp.max - oldMax} PV`); }
+  syncDerived(c); c.hp.cur = Math.min(c.hp.cur, c.hp.max);
+  save(c); render();
+  if (lvlTarget > L) { dlgLevelUp(); return; }
+  closeDlg();
+  showToast({ label: `${c.name} subiu para o nível ${L}!`, total: L, detail: msgs.join(". ") + "." });
 }
 
 /* ================= ARMAZENAMENTO ================= */
@@ -1366,8 +1862,9 @@ function showToast({ label, total, detail, crit, fumble, actions }){
 /* ---------- aba Ficha ---------- */
 function vFicha(c){
   const pb = prof(c.level);
+  const lvlBtn = CLASS_DATA[c.cls] && c.level < 20 ? `<section class="blk"><button class="btn gold full" data-act="lvl-up">Subir para o nível ${c.level + 1}</button></section>` : "";
   const pp = 10 + skillBonus(c, SKILLS.find(s => s[0] === "perc"));
-  return `
+  return lvlBtn + `
   <section class="blk">
     <div class="stats">
       <div class="st"><span class="v">${sg(pb)}</span><span class="k">Proficiência</span></div>
@@ -1434,10 +1931,11 @@ function vCombate(c){
       </div>
       <div class="mini">
         <div><label for="hpMax">PV máximo${c.hpAuto ? " (auto)" : ""}</label><input id="hpMax" type="number" inputmode="numeric" value="${hp.max}" data-bind="hpmax"></div>
-        <div><label for="acV">CA</label><input id="acV" type="number" inputmode="numeric" value="${esc(c.ac)}" data-bind="num" data-path="ac"></div>
+        <div><label for="acV">CA${c.acAuto ? " (auto)" : ""}</label><input id="acV" type="number" inputmode="numeric" value="${esc(c.ac)}" data-bind="num" data-path="ac"></div>
         <div><label for="spV">Desloc. (m)</label><input id="spV" type="number" inputmode="decimal" step="1.5" value="${esc(c.speed)}" data-bind="num" data-path="speed"></div>
       </div>
       ${c.hpAuto ? "" : `<button class="btn sm ghost" style="margin-top:8px" data-act="hp-auto">Usar PV máximo pela média da classe (${hpAutoMax(c)})</button>`}
+      ${c.acAuto ? "" : `<button class="btn sm ghost" style="margin-top:8px" data-act="ac-auto">Usar CA automática pela armadura (${computeAC(c)})</button>`}
     </div>
   </section>
 
@@ -1562,7 +2060,7 @@ function vItens(c){
     <p class="muted small" style="margin:6px 0 0">Cobre, prata, electro, ouro e platina.</p>
   </section>
   <section class="blk">
-    <h2>Equipamento <button class="btn sm" data-act="it-new">${ic("plus")} Novo</button></h2>
+    <h2>Equipamento <span class="row"><button class="btn sm ghost" data-act="it-new">Personalizado</button><button class="btn sm gold" data-act="cat-open">${ic("plus")} Catálogo</button></span></h2>
     <div class="list">${c.items.length ? c.items.map(it => `
       <div class="item">
         <div class="item-h">
@@ -1571,7 +2069,8 @@ function vItens(c){
           <button class="iconbtn" data-act="it-edit" data-id="${it.id}">${ic("edit","Editar item")}</button>
         </div>
         ${it.notes ? `<div class="meta">${esc(it.notes)}</div>` : ""}
-      </div>`).join("") : `<div class="empty">Nenhum item ainda. Adicione armaduras, poções, kits e tudo que o personagem carrega.</div>`}
+        ${itemActs(c, it)}
+      </div>`).join("") : `<div class="empty">Nenhum item ainda. Toque em <b>Catálogo</b> para escolher armas, armaduras e equipamento, ou em <b>Personalizado</b> para criar um item seu.</div>`}
     </div>
   </section>`;
 }
@@ -1581,7 +2080,7 @@ function vFeats(c){
   const groups = SRC_ORDER.map(src => [src, c.feats.filter(f => (f.src || "Outro") === src)]).filter(g => g[1].length);
   const canPreset = CLASS_DATA[c.cls] || SPECIES[c.species] || BACKGROUNDS[c.background];
   return `<section class="blk">
-    <h2>Características <span class="row"><button class="btn sm ghost" data-act="ft-sync">Atualizar</button><button class="btn sm" data-act="ft-new">${ic("plus")} Nova</button></span></h2>
+    <h2>Características <span class="row"><button class="btn sm ghost" data-act="ft-sync">Atualizar</button><button class="btn sm ghost" data-act="ft-new">Nova</button><button class="btn sm gold" data-act="feat-open">${ic("plus")} Talento</button></span></h2>
     ${groups.length ? groups.map(([src, list]) => `
       <div class="lvlh">${src}</div>
       <div class="list">${list.map(f => `
@@ -1594,6 +2093,113 @@ function vFeats(c){
     ${c.hiddenFeats.length ? `<p class="small"><button class="btn sm ghost" data-act="ft-unhide">Restaurar ${c.hiddenFeats.length} característica(s) excluída(s)</button></p>` : ""}
     <p class="muted small">“Atualizar” refaz as características automáticas pela classe, espécie, antecedente e nível. As que você editou ou criou ficam como estão.</p>
   </section>`;
+}
+
+function itemActs(c, it){
+  const b = [];
+  if (it.kind === "armor" || it.kind === "shield") b.push(`<button class="prep" data-act="it-equip" data-id="${it.id}" aria-pressed="${!!it.equipped}">${it.equipped ? "Equipado" : "Equipar"}</button>`);
+  if (it.kind === "weapon" && !c.attacks.some(a => a.itemId === it.id)) b.push(`<button class="btn sm" data-act="it-atk" data-id="${it.id}">Criar ataque</button>`);
+  if (it.heal && it.qty > 0) b.push(`<button class="btn sm green" data-act="it-use" data-id="${it.id}">Usar (${esc(it.heal)})</button>`);
+  return b.length ? `<div class="acts">${b.join("")}</div>` : "";
+}
+/* ---------- catálogos ---------- */
+let catTab = "weapons", catQ = "", featTab = "origin", featQ = "";
+function dlgCatalog(){
+  openDlg(`<h2>Catálogo de equipamento</h2>
+    <div class="chips" style="margin:6px 0 10px">${[["weapons","Armas"],["armor","Armaduras"],["gear","Equipamento"]].map(([k, l]) => `<button class="chip ins" data-act="cat-tab" data-k="${k}" aria-pressed="${catTab === k}">${l}</button>`).join("")}</div>
+    <label class="sr" for="catQ">Buscar</label><input id="catQ" class="grow" placeholder="Buscar (nome em português ou inglês)" value="${esc(catQ)}" autocomplete="off" style="width:100%;border:1.5px solid var(--line);border-radius:10px;background:var(--surface2);padding:9px 11px;min-height:46px">
+    <div id="catList" class="list" style="margin-top:10px"></div>
+    <div class="acts"><button type="button" class="btn gold" data-act="dlg-close">Pronto</button></div>`);
+  renderCatList();
+}
+function renderCatList(){
+  const el = document.getElementById("catList"); if (!el) return;
+  const c = ch(), q = normTxt(catQ), match = (...t) => !q || t.some(x => normTxt(x).includes(q));
+  let rows = [];
+  if (catTab === "weapons") {
+    for (const grp of [["simple","melee","Armas simples corpo a corpo"],["simple","ranged","Armas simples à distância"],["martial","melee","Armas marciais corpo a corpo"],["martial","ranged","Armas marciais à distância"]]) {
+      const ws = WEAPONS.filter(w => w.cat === grp[0] && w.kind === grp[1] && match(w.n, w.en));
+      if (ws.length) rows.push(`<div class="lvlh">${grp[2]}</div>` + ws.map(w => catRow("w:" + w.k, w.n, w.en, weaponText(w) + (weaponProf(c, w) ? "" : " Você não é proficiente."))).join(""));
+    }
+  } else if (catTab === "armor") {
+    for (const [t, l] of [["light","Leves"],["medium","Médias"],["heavy","Pesadas"],["shield","Escudo"]]) {
+      const as = ARMORS.filter(a => a.type === t && match(a.n, a.en));
+      if (as.length) rows.push(`<div class="lvlh">${l}</div>` + as.map(a => catRow("a:" + a.k, a.n, a.en, armorText(a))).join(""));
+    }
+  } else {
+    const gs = GEAR.filter(g => match(g.n));
+    rows.push(gs.map((g, i) => catRow("g:" + GEAR.indexOf(g), g.n, "", g.notes)).join(""));
+  }
+  el.innerHTML = rows.join("") || `<div class="empty">Nada encontrado.</div>`;
+}
+function armorText(a){
+  if (a.type === "shield") return "+2 na CA.";
+  return `CA ${a.ac}${a.cap === null ? " + DES" : a.cap ? " + DES (máx. " + a.cap + ")" : ""}.${a.str ? " Exige FOR " + a.str + " (senão −3 m de deslocamento)." : ""}${a.stealth ? " Desvantagem em Furtividade." : ""}`;
+}
+const catRow = (k, n, en, txt) => `<div class="item"><div class="item-h"><span class="t">${esc(n)}${en && en !== n ? ` <span class="muted small" style="font-weight:500">${esc(en)}</span>` : ""}</span><button class="btn sm gold" data-act="cat-add" data-k="${esc(k)}">Adicionar</button></div>${txt ? `<div class="meta">${esc(txt)}</div>` : ""}</div>`;
+function addFromCatalog(k, btn){
+  const c = ch(), [t, ref] = [k.slice(0, 1), k.slice(2)];
+  let msg = "";
+  if (t === "w") {
+    const w = WEAPONS.find(x => x.k === ref); if (!w) return;
+    const it = { id: uid(), name: w.n, qty: 1, notes: weaponText(w), kind: "weapon", ref: w.k };
+    c.items.push(it); c.attacks.push(attackFromWeapon(c, w, it.id)); msg = "Adicionada, com ataque";
+  } else if (t === "a") {
+    const a = ARMORS.find(x => x.k === ref); if (!a) return;
+    const kind = a.type === "shield" ? "shield" : "armor";
+    const it = { id: uid(), name: a.n, qty: 1, notes: armorText(a), kind, ref: a.k, equipped: !c.items.some(i => i.kind === kind && i.equipped) };
+    c.items.push(it); if (it.equipped) c.acAuto = true; msg = it.equipped ? "Equipado" : "Adicionado";
+  } else {
+    const g = GEAR[+ref]; if (!g) return;
+    const ex = c.items.find(i => i.name === g.n && i.kind === "gear");
+    if (ex) ex.qty++; else c.items.push({ id: uid(), name: g.n, qty: 1, notes: g.notes, kind: "gear", heal: g.heal });
+    msg = "Adicionado";
+  }
+  save(); render();
+  if (btn) { btn.textContent = msg + " ✓"; btn.classList.remove("gold"); btn.classList.add("green"); setTimeout(() => { if (btn.isConnected) { btn.textContent = "Adicionar"; btn.classList.remove("green"); btn.classList.add("gold"); } }, 1600); }
+}
+function dlgFeatPicker(){
+  openDlg(`<h2>Escolher talento</h2>
+    <div class="chips" style="margin:6px 0 10px">${FEAT_CATS.map(([k, l]) => `<button class="chip ins" data-act="feat-tab" data-k="${k}" aria-pressed="${featTab === k}">${l}</button>`).join("")}</div>
+    <label class="sr" for="featQ">Buscar talento</label><input id="featQ" placeholder="Buscar (português ou inglês)" value="${esc(featQ)}" autocomplete="off" style="width:100%;border:1.5px solid var(--line);border-radius:10px;background:var(--surface2);padding:9px 11px;min-height:46px">
+    <div id="featList" class="list" style="margin-top:10px"></div>
+    <p class="muted small">Confira os pré-requisitos no Livro do Jogador. Talentos gerais pedem nível 4+, e dádivas épicas, nível 19+.</p>
+    <div class="acts"><button type="button" class="btn gold" data-act="dlg-close">Pronto</button></div>`);
+  renderFeatList();
+}
+function renderFeatList(){
+  const el = document.getElementById("featList"); if (!el) return;
+  const c = ch(), q = normTxt(featQ);
+  const fs = FEATS.filter(f => (q ? true : f.cat === featTab) && (!q || normTxt(f.n).includes(q) || normTxt(f.en).includes(q)));
+  el.innerHTML = fs.map(f => {
+    const has = c.feats.some(x => x.featKey === f.k) || c.featKeys.includes(f.k);
+    const ab = f.abil === "asi" ? "" : f.abil ? `+1 em ${f.abil.length === 6 ? "qualquer atributo" : f.abil.map(k => ABN[k]).join(" ou ")}. ` : "";
+    return `<div class="item"><div class="item-h"><span class="t">${esc(f.n)} <span class="muted small" style="font-weight:500">${esc(f.en)}</span></span>
+      <button class="btn sm ${has && f.k !== "asi" ? "" : "gold"}" data-act="feat-add" data-k="${f.k}">${has && f.k !== "asi" ? "Já tem" : "Adicionar"}</button></div>
+      <div class="meta">${esc(ab + f.text)}</div></div>`;
+  }).join("") || `<div class="empty">Nenhum talento encontrado.</div>`;
+}
+function addFeat(k){
+  const c = ch(), f = FEATS.find(x => x.k === k); if (!f) return;
+  const feat = { id: uid(), src: "Talento", lvl: c.level, name: f.n, text: f.text + ` (${f.en})`, featKey: f.k };
+  c.feats.push(feat);
+  if (!f.abil) { save(); render(); renderFeatList(); const b = dlgBody.querySelector(`[data-act="feat-add"][data-k="${k}"]`); if (b) { b.textContent = "Adicionado ✓"; b.classList.remove("gold"); } return; }
+  const max = f.cat === "boon" ? 30 : 20, opts = f.abil === "asi" ? ANY6 : f.abil;
+  const selA = (n, d) => `<select name="${n}">${opts.map(a => `<option value="${a}" ${a === d ? "selected" : ""}>${ABIL.find(x => x[0] === a)[1]} (${c.abilities[a]})</option>`).join("")}</select>`;
+  openDlg(`<form><h2>${esc(f.n)}</h2>
+    <p>${f.abil === "asi" ? "Escolha como distribuir o aumento." : "Escolha o atributo que recebe +1."} Máximo ${max}.</p>
+    ${f.abil === "asi" ? fld("Tipo de aumento", `<select name="mode"><option value="2">+2 em um atributo</option><option value="11">+1 em dois atributos</option></select>`) + fld("Atributo", selA("a1", opts[0])) + fld("Segundo atributo (só no +1 em dois)", selA("a2", opts[1])) : fld("Atributo", selA("a1", opts[0]))}
+    <div class="acts"><button type="button" class="btn ghost" data-act="dlg-close">Pular</button><button type="button" class="btn gold" data-act="dlg-save">Aplicar</button></div></form>`, o => {
+      const inc = (a, n) => { const before = c.abilities[a]; c.abilities[a] = Math.min(max, before + n); return c.abilities[a] - before; };
+      const done = [];
+      if (f.abil === "asi" && o.mode === "2") { const d = inc(o.a1, 2); done.push(`+${d} ${ABN[o.a1]}`); }
+      else if (f.abil === "asi") { if (o.a1 === o.a2) { dlgError("Escolha dois atributos diferentes."); return; } done.push(`+${inc(o.a1, 1)} ${ABN[o.a1]}`, `+${inc(o.a2, 1)} ${ABN[o.a2]}`); }
+      else done.push(`+${inc(o.a1, 1)} ${ABN[o.a1]}`);
+      feat.text += ` Aplicado: ${done.join(", ")}.`;
+      if (f.k === "resilient") c.saves[o.a1] = true;
+      save(); closeDlg(); render();
+      showToast({ label: f.n, total: "✓", detail: `Talento adicionado. ${done.join(", ")} aplicado.` });
+    });
 }
 
 /* ---------- aba Notas ---------- */
@@ -1629,9 +2235,10 @@ function vDados(){
 
 function render(){
   const c = ch();
-  const before = c.hp.max + "|" + c.resources.map(r => r.max).join(",");
+  const sig = () => c.hp.max + "|" + c.ac + "|" + c.featKeys.join(",") + "|" + c.resources.map(r => r.max).join(",");
+  const before = sig();
   syncDerived(c);
-  if (before !== c.hp.max + "|" + c.resources.map(r => r.max).join(",")) save(c);
+  if (before !== sig()) save(c);
   renderHeader(); renderTabs();
   const v = { ficha: vFicha, combate: vCombate, magias: vMagias, itens: vItens, notas: vNotas, dados: vDados }[tab];
   main.innerHTML = v(c);
@@ -1696,7 +2303,8 @@ function dlgChars(){
     <ul class="charlist">${ids.map(id => { const c = store.chars[id]; return `<li><button class="pick" data-act="char-pick" data-id="${id}" ${id === store.cur ? 'aria-current="true"' : ""}><b>${esc(c.name)}</b><div class="muted small">${esc(c.cls)} nível ${c.level}${c.species ? ", " + esc(speciesLabel(c)) : ""}</div></button></li>`; }).join("")}</ul>
     <div class="list">
       <button class="btn full gold" data-act="char-edit">Editar dados de ${esc(ch().name)}</button>
-      <button class="btn full" data-act="char-new">${ic("plus")} Novo personagem</button>
+      <button class="btn full" data-act="char-new">${ic("plus")} Novo personagem (passo a passo)</button>
+      ${CLASS_DATA[ch().cls] && ch().level < 20 ? `<button class="btn full" data-act="lvl-up">Subir ${esc(ch().name)} para o nível ${ch().level + 1}</button>` : ""}
       <div class="row"><button class="btn full" data-act="backup-out">Exportar backup</button><button class="btn full" data-act="backup-in">Importar backup</button></div>
       <button class="btn full red" data-act="char-del">Excluir ${esc(ch().name)}</button>
       <button class="btn full ghost" data-act="dlg-close">Fechar</button>
@@ -1711,7 +2319,12 @@ function fillLineage(speciesText, current){
   const cur = lnAlias || current || selEl.value;
   selEl.innerHTML = `<option value="">Escolha…</option>` + Object.keys(L.opts).map(k => `<option value="${esc(k)}" ${k === cur ? "selected" : ""}>${esc(k)}</option>`).join("");
 }
-dlgBody.addEventListener("input", e => { if (e.target.name === "species") fillLineage(e.target.value, ""); });
+dlgBody.addEventListener("change", e => { if (wiz && e.target.hasAttribute && e.target.hasAttribute("data-rerender")) { wizCollect(); renderWiz(); } });
+dlgBody.addEventListener("input", e => {
+  if (e.target.name === "species") fillLineage(e.target.value, "");
+  if (e.target.id === "catQ") { catQ = e.target.value; renderCatList(); }
+  if (e.target.id === "featQ") { featQ = e.target.value; renderFeatList(); }
+});
 dlgBody.addEventListener("change", e => { if (e.target.name === "cls") { const dl = document.getElementById("dl-sub"); if (dl) dl.innerHTML = (SUBCLASSES[e.target.value] || []).map(k => `<option value="${esc(k)}"></option>`).join(""); } });
 dlgBody.addEventListener("change", e => { if (e.target.name === "species") fillLineage(e.target.value, ""); });
 function dlgCharEdit(){
@@ -1728,6 +2341,7 @@ function dlgCharEdit(){
       ${fld("Tendência", inp("alignment", c.alignment, 'maxlength="30"'))}
       ${fld("Tamanho", sel("size", ["Minúsculo","Pequeno","Médio","Grande"], c.size))}
       ${fld("Bônus extra de iniciativa", inp("initBonus", c.initBonus, 'type="number" inputmode="numeric"'))}
+      ${fld("Bônus extra de CA (itens mágicos)", inp("acBonus", c.acBonus, 'type="number" inputmode="numeric" min="-5" max="10"'))}
     </div>
     ${fld("Dado de Vida (deixe 0 para usar o da classe)", inp("hdOverride", c.hdOverride, 'type="number" inputmode="numeric" min="0" max="12"'))}
     ${chk("auto", true, "Preencher características, recursos e perícias pelas regras")}
@@ -1741,7 +2355,7 @@ function dlgCharEdit(){
       const newCls = o.cls !== c.cls;
       c.name = o.name.trim() || "Sem nome"; c.cls = o.cls; c.level = clampInt(o.level, 1, 20);
       c.subclass = o.subclass.trim(); c.species = o.species.trim(); c.background = o.background.trim(); c.alignment = o.alignment.trim();
-      c.size = o.size; c.initBonus = parseInt(o.initBonus, 10) || 0; c.hdOverride = clampInt(o.hdOverride, 0, 12);
+      c.size = o.size; c.initBonus = parseInt(o.initBonus, 10) || 0; c.acBonus = parseInt(o.acBonus, 10) || 0; c.hdOverride = clampInt(o.hdOverride, 0, 12);
       if (newCls) { const k = CLASSES[c.cls]; if (k[1].length) c.saves = Object.fromEntries(k[1].map(s => [s, true])); if (k[3]) c.spell.abil = k[3]; }
       c.hdUsed = Math.min(c.hdUsed, c.level);
       c.hpAuto = !!o.hpAuto;
@@ -1949,6 +2563,7 @@ function doFillSlots(type){
   const c = ch();
   const arr = type === "full" ? FULL[c.level] : type === "half" ? HALF[c.level] : type === "third" ? THIRD[c.level] : pactSlots(c.level);
   c.spell.slots = Array.from({ length: 9 }, (_, i) => ({ max: arr[i] || 0, used: 0 }));
+  c.slotsAuto = true;
   showAllSlots = false;
   save(); rerender();
 }
@@ -1995,6 +2610,26 @@ document.addEventListener("click", e => {
     case "res-adj": { const r = findBy(c.resources, d.id); if (r) { r.used = Math.max(0, Math.min(r.max, r.used - +d.d)); save(); rerender(); } break; }
     case "hp-auto": c.hpAuto = true; save(); rerender(); break;
     case "ft-new": dlgFeat(); break;
+    case "feat-open": dlgFeatPicker(); break;
+    case "feat-tab": featTab = d.k; featQ = ""; { const q = document.getElementById("featQ"); if (q) q.value = ""; } dlgBody.querySelectorAll('[data-act="feat-tab"]').forEach(x => x.setAttribute("aria-pressed", String(x.dataset.k === featTab))); renderFeatList(); break;
+    case "feat-add": addFeat(d.k); break;
+    case "cat-open": dlgCatalog(); break;
+    case "cat-tab": catTab = d.k; dlgBody.querySelectorAll('[data-act="cat-tab"]').forEach(x => x.setAttribute("aria-pressed", String(x.dataset.k === catTab))); renderCatList(); break;
+    case "cat-add": addFromCatalog(d.k, b); break;
+    case "ac-auto": c.acAuto = true; save(); rerender(); break;
+    case "it-equip": {
+      const it = findBy(c.items, d.id); if (!it) break;
+      if (!it.equipped) c.items.forEach(x => { if (x.kind === it.kind) x.equipped = false; });
+      it.equipped = !it.equipped; c.acAuto = true; syncDerived(c); save(); rerender();
+      const a = ARMORS.find(x => x.k === it.ref);
+      showToast({ label: it.name, total: "CA " + c.ac, detail: it.equipped ? (a && a.str && c.abilities.str < a.str ? `Equipado. Sua Força está abaixo de ${a.str}: −3 m de deslocamento.` : "Equipado.") : "Desequipado." });
+      break; }
+    case "it-atk": { const it = findBy(c.items, d.id), w = it && WEAPONS.find(x => x.k === it.ref); if (w) { c.attacks.push(attackFromWeapon(c, w, it.id)); save(); rerender(); showToast({ label: w.n, total: "✓", detail: "Ataque criado na aba Combate." }); } break; }
+    case "it-use": {
+      const it = findBy(c.items, d.id); if (!it || !it.qty) break;
+      const t = rollExpr(it.name, it.heal);
+      if (typeof t === "number") { if (c.hp.cur === 0) c.death = { s:0, f:0 }; c.hp.cur = Math.min(c.hp.max, c.hp.cur + t); it.qty--; save(); rerender(); }
+      break; }
     case "ft-unhide": c.hiddenFeats = []; applyPresets(c, { speciesChanged: false }); save(); rerender(); break;
     case "ft-edit": dlgFeat(findBy(c.feats, d.id)); break;
     case "ft-sync": applyPresets(c, { speciesChanged: false }); save(); rerender(); showToast({ label:"Características", total:"✓", detail:"Atualizadas pela classe, espécie, antecedente e nível." }); break;
@@ -2035,7 +2670,21 @@ document.addEventListener("click", e => {
     case "log-clear": rollLog = []; lsSet("ficha5e:log", rollLog); rerender(); break;
     case "char-pick": store.cur = d.id; persistLocal(); closeDlg(); render(); break;
     case "char-edit": dlgCharEdit(); break;
-    case "char-new": { const n = blank(); store.chars[n.id] = n; store.cur = n.id; save(n); render(); dlgCharEdit(); break; }
+    case "char-new": startCreate(); break;
+    case "wiz-blank": { wiz = null; const n = blank(); store.chars[n.id] = n; store.cur = n.id; save(n); render(); dlgCharEdit(); break; }
+    case "wiz-next": { wizCollect(); const e = wizValidate(); if (e) { dlgError(e); break; } wiz.step++; renderWiz(); break; }
+    case "wiz-back": wizCollect(); wiz.step--; renderWiz(); break;
+    case "wiz-finish": { wizCollect(); const e = wizValidate(); if (e) { dlgError(e); break; } wizFinish(); break; }
+    case "wiz-roll": {
+      const r = []; for (let i = 0; i < 6; i++) { const ds = [die(6), die(6), die(6), die(6)].sort((a, b) => a - b); r.push(ds[1] + ds[2] + ds[3]); }
+      r.sort((a, b) => b - a); wiz.d.rolled = r; wiz.d.assign = defaultAssign(wiz.d.cls, r); wiz.d.assignIdx = idxFor(wiz.d.assign, r); renderWiz(); break; }
+    case "pb-adj": {
+      const pbv = wiz.d.pb, nv = pbv[d.k] + +d.d; if (nv < 8 || nv > 15) break;
+      const spent = ANY6.reduce((a, k) => a + PB_COST[k === d.k ? nv : pbv[k]], 0); if (spent > 27) { dlgError("Sem pontos suficientes."); break; }
+      pbv[d.k] = nv; renderWiz(); break; }
+    case "lvl-up": closeDlg(); startLevelUp(); break;
+    case "lvl-confirm": confirmLevelUp(); break;
+    case "lvl-stop": lvlTarget = 0; closeDlg(); showToast({ label: ch().name, total: ch().level, detail: "Parou no nível " + ch().level + ". Use “Subir de nível” para continuar depois." }); break;
     case "char-del": askConfirm("Excluir personagem", `Excluir ${c.name}? Isso não pode ser desfeito.`, "Excluir", () => removeChar(c.id).then(render), true); break;
     case "backup-out": exportBackup(); break;
     case "backup-in": $("#importFile").click(); break;
@@ -2049,9 +2698,9 @@ document.addEventListener("change", e => {
   const el = e.target, b = el.dataset && el.dataset.bind; if (!b) return;
   const c = ch();
   if (b === "abil") c.abilities[el.dataset.k] = clampInt(el.value, 1, 30);
-  else if (b === "num") setPath(c, el.dataset.path, Math.max(0, parseFloat(String(el.value).replace(",", ".")) || 0));
+  else if (b === "num") { setPath(c, el.dataset.path, Math.max(0, parseFloat(String(el.value).replace(",", ".")) || 0)); if (el.dataset.path === "ac") c.acAuto = false; }
   else if (b === "hpmax") { c.hpAuto = false; const full = c.hp.cur >= c.hp.max; c.hp.max = clampInt(el.value, 1, 9999); c.hp.cur = full ? c.hp.max : Math.min(c.hp.cur, c.hp.max); }
-  else if (b === "slotmax") { const s = c.spell.slots[+el.dataset.i]; s.max = clampInt(el.value, 0, 9); s.used = Math.min(s.used, s.max); }
+  else if (b === "slotmax") { c.slotsAuto = false; const s = c.spell.slots[+el.dataset.i]; s.max = clampInt(el.value, 0, 9); s.used = Math.min(s.used, s.max); }
   else if (b === "spabil") c.spell.abil = el.value;
   else if (b === "text") return;
   save(); rerender();
