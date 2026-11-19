@@ -1077,9 +1077,9 @@ function lineageText(c, fallback){
 function presetSpells(c){
   const ln = lineageOf(c), out = [];
   if (ln && ln.spells) for (const [l, lv, n, en, uses] of ln.spells) if (c.level >= l)
-    out.push({ key:`ln:${c.species}:${n}`, name:n, lvl:lv, notes:(lv ? (uses === "pb" ? `Da espécie: sem espaço ${prof(c.level)}x por descanso longo.` : LINEAGE_SPELL_NOTE) : "Truque da espécie.") + (en ? ` Nome original: ${en}.` : "") });
-  if (c.species === "Aasimar") out.push({ key:"ln:Aasimar:Luz", name:"Luz", lvl:0, notes:"Truque da espécie (Carisma). Nome original: Light." });
-  if (c.species === "Tiefling") out.push({ key:"ln:Tiefling:Taumaturgia", name:"Taumaturgia", lvl:0, notes:"Truque da espécie. Nome original: Thaumaturgy." });
+    out.push({ key:`ln:${c.species}:${n}`, name:n, lvl:lv, descV:1, notes:((SPELL_BY_EN[(en || "").toLowerCase()] || {}).desc ? SPELL_BY_EN[en.toLowerCase()].desc + " " : "") + (lv ? (uses === "pb" ? `Da espécie: sem espaço ${prof(c.level)}x por descanso longo.` : LINEAGE_SPELL_NOTE) : "Truque da espécie.") + (en ? ` Nome original: ${en}.` : "") });
+  if (c.species === "Aasimar") out.push({ key:"ln:Aasimar:Luz", name:"Luz", lvl:0, descV:1, notes:SPELL_DESC["Light"] + " Truque da espécie (Carisma). Nome original: Light." });
+  if (c.species === "Tiefling") out.push({ key:"ln:Tiefling:Taumaturgia", name:"Taumaturgia", lvl:0, descV:1, notes:SPELL_DESC["Thaumaturgy"] + " Truque da espécie. Nome original: Thaumaturgy." });
   return out;
 }
 function presetFeatures(c){
@@ -2065,11 +2065,412 @@ True Polymorph;Metamorfose Verdadeira;9;T;bkw;c;
 True Resurrection;Ressurreição Verdadeira;9;N;cd;;
 Weird;Pesadelo Fatal;9;I;kw;c;4d10
 Wish;Desejo;9;C;sw;;`;
+const SPELL_DESC_RAW = `Acid Splash|Uma bolha de ácido explode num ponto a até 18 m; criaturas numa esfera de 1,5 m fazem salvaguarda de DES ou sofrem 1d6 de dano ácido.
+Blade Ward|Concentração, 1 minuto: ataques contra você subtraem 1d4 da rolagem.
+Chill Touch|Ataque mágico corpo a corpo: 1d10 de dano necrótico, e o alvo não recupera PV até o fim do seu próximo turno.
+Dancing Lights|Concentração: até quatro luzes flutuantes (ou uma forma brilhante) que você move a até 36 m; cada uma ilumina 3 m.
+Druidcraft|Pequenos efeitos da natureza: prever o clima, fazer uma flor desabrochar, criar efeitos sensoriais ou acender e apagar velas.
+Eldritch Blast|Ataque mágico à distância (36 m): 1d10 de dano de força por raio. Ganha mais raios nos níveis 5, 11 e 17.
+Elementalism|Controla elementos em pequena escala: rajada de ar, gotas de água, chama pequena, poeira ou terra moldada.
+Fire Bolt|Ataque mágico à distância (36 m): 1d10 de dano de fogo; incendeia objetos inflamáveis soltos.
+Friends|Concentração, 1 minuto: uma criatura próxima faz salvaguarda de SAB ou fica Enfeitiçada por você; depois ela percebe que foi enfeitiçada.
+Guidance|Concentração, 1 minuto: uma criatura escolhe uma perícia e soma 1d4 aos testes dela.
+Light|Um objeto brilha por 1 hora: luz forte em 6 m e penumbra em mais 6 m.
+Mage Hand|Mão espectral a até 9 m que manipula objetos leves, abre portas e recipientes. Não ataca.
+Mending|Conserta uma quebra ou rasgo pequeno num objeto.
+Message|Sussurra uma mensagem a uma criatura a até 36 m, que pode responder baixinho.
+Mind Sliver|Uma criatura a até 18 m faz salvaguarda de INT ou sofre 1d6 de dano psíquico e subtrai 1d4 da próxima salvaguarda.
+Minor Illusion|Cria um som ou uma imagem parada pequena (cubo de 1,5 m) por 1 minuto; examinar com atenção revela a ilusão.
+Poison Spray|Ataque mágico à distância (9 m): 1d12 de dano de veneno.
+Prestidigitation|Truques menores: faísca, limpar ou sujar, esquentar ou esfriar, marcar um símbolo ou criar uma bugiganga ilusória.
+Produce Flame|Chama na mão que ilumina; pode ser arremessada (ataque mágico, 18 m) causando 1d8 de dano de fogo.
+Ray of Frost|Ataque mágico à distância (18 m): 1d8 de dano de frio e −3 m de deslocamento do alvo até o seu próximo turno.
+Resistance|Concentração: uma criatura escolhe um tipo de dano e reduz em 1d4 o dano desse tipo uma vez por turno.
+Sacred Flame|Uma criatura a até 18 m faz salvaguarda de DES ou sofre 1d8 de dano radiante; ignora cobertura.
+Shillelagh|Seu bordão ou clava usa o atributo de conjuração no ataque e no dano, com dado maior (aumenta com o nível) e pode causar dano de força.
+Shocking Grasp|Ataque mágico corpo a corpo: 1d8 de dano elétrico, e o alvo não faz ataques de oportunidade até o seu próximo turno.
+Sorcerous Burst|Ataque mágico à distância (36 m): 1d8 de um tipo à escolha (ácido, frio, fogo, elétrico, veneno, psíquico ou trovejante); dados que tiram 8 rolam de novo e somam.
+Spare the Dying|Uma criatura com 0 PV a até 4,5 m fica Estável.
+Starry Wisp|Ataque mágico à distância (18 m): 1d8 de dano radiante; o alvo emite penumbra e não pode ficar Invisível até o fim do seu próximo turno.
+Thaumaturgy|Pequenos prodígios: voz trovejante, tremores leves, chamas tremeluzindo, portas batendo, olhos mudando de aparência.
+Thorn Whip|Ataque mágico corpo a corpo (alcance 9 m): 1d6 de dano perfurante e puxa o alvo 3 m na sua direção.
+Thunderclap|Cada criatura a até 1,5 m de você faz salvaguarda de CON ou sofre 1d6 de dano trovejante.
+Toll the Dead|Uma criatura a até 18 m faz salvaguarda de SAB ou sofre 1d8 de dano necrótico (1d12 se já estiver ferida).
+True Strike|Faz um ataque com arma usando seu atributo de conjuração; pode causar dano radiante e ganha dano extra nos níveis 5, 11 e 17.
+Vicious Mockery|Uma criatura a até 18 m faz salvaguarda de SAB ou sofre 1d6 de dano psíquico e tem desvantagem no próximo ataque.
+Word of Radiance|Criaturas à sua escolha a até 1,5 m fazem salvaguarda de CON ou sofrem 1d6 de dano radiante.
+Alarm|Protege uma área (cubo de 6 m) por 8 horas: você recebe um alerta mental ou sonoro quando uma criatura entra.
+Animal Friendship|Uma fera a até 9 m faz salvaguarda de SAB ou fica Enfeitiçada por você por 24 horas.
+Armor of Agathys|Você ganha 5 PV temporários; enquanto durarem, quem o acertar corpo a corpo sofre 5 de dano de frio (+5 por círculo acima).
+Arms of Hadar|Tentáculos sombrios: criaturas a até 3 m fazem salvaguarda de FOR ou sofrem 2d6 de dano necrótico e não podem usar reações.
+Bane|Concentração: até três criaturas fazem salvaguarda de CAR ou subtraem 1d4 de ataques e salvaguardas.
+Bless|Concentração, 1 minuto: até três criaturas somam 1d4 a ataques e salvaguardas.
+Burning Hands|Cone de 4,5 m: salvaguarda de DES ou 3d6 de dano de fogo (metade se passar).
+Charm Person|Um humanoide faz salvaguarda de SAB ou fica Enfeitiçado por você por 1 hora.
+Chromatic Orb|Ataque mágico à distância: 3d8 de um tipo à escolha; se dois dados derem o mesmo número, o orbe salta para outro alvo.
+Color Spray|Cone de 4,5 m: criaturas fazem salvaguarda de CON ou ficam Cegas até o fim do seu próximo turno.
+Command|Ordem de uma palavra (Aproxime-se, Largue, Fuja, Caia, Pare): o alvo faz salvaguarda de SAB ou obedece no próximo turno.
+Compelled Duel|Concentração: o alvo faz salvaguarda de SAB ou tem desvantagem para atacar outros e não consegue se afastar de você.
+Comprehend Languages|Por 1 hora, entende qualquer idioma falado que ouve ou escrito que toca.
+Create or Destroy Water|Cria água limpa ou chuva numa área pequena, ou destrói a mesma quantidade de água ou névoa.
+Cure Wounds|Toque: a criatura recupera 2d8 + seu modificador de conjuração em PV (+2d8 por círculo acima).
+Detect Evil and Good|Concentração: sente aberrações, celestiais, corruptores, elementais, feéricos e mortos-vivos a até 9 m.
+Detect Magic|Concentração: sente magia a até 9 m e vê uma aura em criaturas e objetos mágicos.
+Detect Poison and Disease|Concentração: sente venenos, criaturas venenosas e doenças a até 9 m.
+Disguise Self|Muda sua aparência (roupas, rosto, altura) por 1 hora; quem examinar com atenção pode perceber.
+Dissonant Whispers|Uma criatura faz salvaguarda de SAB ou sofre 3d6 de dano psíquico e usa a reação para fugir de você.
+Divine Favor|Por 1 minuto, seus ataques com arma causam +1d4 de dano radiante.
+Divine Smite|Ação bônus ao acertar com arma ou golpe desarmado: +2d8 de dano radiante (+1d8 contra corruptores e mortos-vivos; +1d8 por círculo acima).
+Ensnaring Strike|Ao acertar com arma, vinhas tentam deixar o alvo Contido (salvaguarda de FOR); ele sofre 1d6 de dano perfurante por turno.
+Entangle|Concentração: quadrado de 6 m vira terreno difícil; criaturas fazem salvaguarda de FOR ou ficam Contidas.
+Expeditious Retreat|Concentração, 10 minutos: Disparada como ação bônus ao conjurar e em cada turno.
+Faerie Fire|Concentração: cubo de 6 m; criaturas fazem salvaguarda de DES ou brilham, dando vantagem aos ataques contra elas e não podendo ficar Invisíveis.
+False Life|Você ganha 2d4 + 4 PV temporários (+5 por círculo acima).
+Feather Fall|Reação: até cinco criaturas caindo descem devagar e não sofrem dano de queda.
+Find Familiar|Invoca um espírito em forma de animal pequeno que ajuda, entrega magias de toque e compartilha sentidos com você.
+Fog Cloud|Concentração: esfera de névoa de 6 m que deixa a área totalmente obscurecida.
+Goodberry|Cria 10 frutas mágicas; cada uma cura 1 PV e alimenta por um dia.
+Grease|Quadrado de 3 m escorregadio: criaturas fazem salvaguarda de DES ou ficam Caídas.
+Guiding Bolt|Ataque mágico à distância (36 m): 4d6 de dano radiante, e o próximo ataque contra o alvo tem vantagem.
+Hail of Thorns|Ao acertar com arma à distância, espinhos explodem: o alvo e quem estiver a 1,5 m faz salvaguarda de DES ou sofre 1d10 de dano perfurante.
+Healing Word|Ação bônus: uma criatura a até 18 m recupera 2d4 + seu modificador de conjuração em PV.
+Hellish Rebuke|Reação ao sofrer dano: o atacante faz salvaguarda de DES ou sofre 2d10 de dano de fogo (metade se passar).
+Heroism|Concentração: uma criatura fica imune a Amedrontado e ganha PV temporários iguais ao seu modificador no início de cada turno.
+Hex|Concentração: +1d6 de dano necrótico ao acertar o alvo; ele tem desvantagem em testes de um atributo à escolha. Dá para trocar de alvo.
+Hunter's Mark|Concentração: +1d6 de dano de força ao acertar o alvo marcado e vantagem para encontrá-lo. Dá para trocar de alvo.
+Ice Knife|Ataque mágico: 1d10 de dano perfurante; depois o gelo explode e criaturas a 1,5 m fazem salvaguarda de DES ou sofrem 2d6 de frio.
+Identify|Revela as propriedades de um item mágico e as magias que afetam um objeto ou criatura.
+Illusory Script|Escreve uma mensagem que só as criaturas escolhidas conseguem ler; para os outros, parece outra coisa.
+Inflict Wounds|Uma criatura que você toca faz salvaguarda de CON ou sofre 2d10 de dano necrótico (metade se passar).
+Jump|A distância de salto de uma criatura triplica por 1 minuto.
+Longstrider|+3 m de deslocamento para uma criatura por 1 hora.
+Mage Armor|Por 8 horas, uma criatura sem armadura tem CA 13 + DES.
+Magic Missile|Três dardos que sempre acertam, cada um com 1d4 + 1 de dano de força (+1 dardo por círculo acima).
+Protection from Evil and Good|Concentração: aberrações, celestiais, elementais, feéricos, corruptores e mortos-vivos têm desvantagem para atacar o alvo, que não pode ser Enfeitiçado, Amedrontado ou possuído por eles.
+Purify Food and Drink|Remove veneno e podridão de comida e bebida numa esfera de 1,5 m.
+Ray of Sickness|Ataque mágico à distância: 2d8 de dano de veneno, e o alvo fica Envenenado até o fim do seu próximo turno.
+Sanctuary|Ação bônus: quem quiser atacar a criatura protegida faz salvaguarda de SAB ou escolhe outro alvo; acaba se ela atacar.
+Searing Smite|Ao acertar com arma: +1d6 de dano de fogo, e o alvo queima, sofrendo 1d6 por turno até passar numa salvaguarda de CON.
+Shield|Reação ao ser atacado: +5 na CA até o seu próximo turno e imunidade a Mísseis Mágicos.
+Shield of Faith|Concentração, até 10 minutos: +2 na CA de uma criatura.
+Silent Image|Concentração: cria uma imagem visual (cubo de 4,5 m) que você pode mover; sem som nem cheiro.
+Sleep|Concentração: criaturas numa esfera de 1,5 m fazem salvaguarda de SAB; quem falhar fica Incapacitado e depois Inconsciente.
+Speak with Animals|Por 10 minutos, você fala e entende feras.
+Tasha's Hideous Laughter|Concentração: uma criatura faz salvaguarda de SAB ou cai de rir, ficando Caída e Incapacitada.
+Tenser's Floating Disk|Disco flutuante que carrega até 250 kg e segue você por 1 hora.
+Thunderous Smite|Ao acertar com arma: +2d6 de dano trovejante, e o alvo faz salvaguarda de FOR ou é empurrado 3 m e fica Caído.
+Thunderwave|Cubo de 4,5 m a partir de você: salvaguarda de CON ou 2d8 de dano trovejante e empurrado 3 m (metade do dano se passar).
+Unseen Servant|Uma força invisível faz tarefas simples para você por 1 hora.
+Witch Bolt|Concentração: ataque mágico com 2d12 de dano elétrico; nos turnos seguintes, ação bônus para causar 1d12 de novo ao mesmo alvo.
+Wrathful Smite|Ao acertar com arma: +1d6 de dano necrótico, e o alvo faz salvaguarda de SAB ou fica Amedrontado.
+Aid|Até três criaturas ganham +5 de PV máximo e atual por 8 horas (+5 por círculo acima).
+Alter Self|Concentração: muda sua aparência, ganha adaptação aquática ou armas naturais.
+Animal Messenger|Uma fera minúscula leva uma mensagem curta a um lugar que você conhece.
+Arcane Lock|Tranca magicamente uma porta, janela ou baú; só você e quem você permitir abrem facilmente.
+Arcane Vigor|Você gasta até dois Dados de Vida e recupera PV, somando seu modificador de conjuração.
+Augury|Pergunta sobre um plano para os próximos 30 minutos e recebe um presságio: Bom, Ruim, Bom e ruim, ou Indiferente.
+Barkskin|Por 1 hora, a CA de uma criatura não fica abaixo de 17.
+Blindness/Deafness|Uma criatura faz salvaguarda de CON ou fica Cega ou Surda por 1 minuto (repete a cada turno).
+Blur|Concentração: ataques contra você têm desvantagem.
+Calm Emotions|Concentração: humanoides numa área fazem salvaguarda de CAR ou perdem o Enfeitiçado e Amedrontado, ou deixam de ser hostis.
+Cloud of Daggers|Concentração: adagas giram num cubo de 1,5 m; quem entra ou começa o turno ali sofre 4d4 de dano cortante.
+Continual Flame|Uma chama permanente que não esquenta nem consome oxigênio.
+Cordon of Arrows|Planta munições que atacam criaturas que se aproximam, causando 1d6 de dano perfurante cada.
+Crown of Madness|Concentração: um humanoide faz salvaguarda de SAB ou fica Enfeitiçado e ataca quem você escolher.
+Darkness|Concentração: esfera de escuridão mágica de 4,5 m que nem a visão no escuro atravessa.
+Darkvision|Uma criatura ganha visão no escuro de 45 m por 8 horas.
+Detect Thoughts|Concentração: lê os pensamentos superficiais de uma criatura e pode sondar mais fundo (salvaguarda de SAB).
+Dragon's Breath|Concentração: uma criatura ganha um sopro (cone de 4,5 m, 3d6 do tipo escolhido) que usa com a ação de Magia.
+Enhance Ability|Concentração: uma criatura tem vantagem nos testes de um atributo à escolha.
+Enlarge/Reduce|Concentração: aumenta (dano +1d4, vantagem em Força) ou reduz (dano −1d4) uma criatura ou objeto.
+Enthrall|Criaturas fazem salvaguarda de SAB ou têm desvantagem em Percepção para notar outras coisas além de você.
+Find Steed|Invoca um espírito montaria leal (feérico, celestial ou corruptor) que luta ao seu lado.
+Find Traps|Sente a presença de armadilhas a até 36 m, mas não a localização exata.
+Flame Blade|Concentração: lâmina de fogo na mão; ataque mágico corpo a corpo com 3d6 de dano de fogo.
+Flaming Sphere|Concentração: esfera de fogo de 1,5 m que você move; quem estiver perto faz salvaguarda de DES ou sofre 2d6 de fogo.
+Gentle Repose|Protege um cadáver da decomposição e de virar morto-vivo por 10 dias.
+Gust of Wind|Concentração: linha de vento de 18 m; salvaguarda de FOR ou é empurrado 4,5 m; dispersa névoas.
+Heat Metal|Concentração: um objeto de metal fica em brasa; quem o segura sofre 2d8 de fogo e pode ter desvantagem.
+Hold Person|Concentração: um humanoide faz salvaguarda de SAB ou fica Paralisado (repete a cada turno).
+Invisibility|Concentração: uma criatura fica Invisível por até 1 hora; acaba se ela atacar ou conjurar.
+Knock|Destranca uma porta, fechadura ou corrente; faz um barulho alto.
+Lesser Restoration|Encerra uma condição da criatura: Cega, Surda, Paralisada ou Envenenada.
+Levitate|Concentração: uma criatura ou objeto flutua; você o move para cima ou para baixo.
+Locate Animals or Plants|Descobre a direção e a distância do tipo de fera ou planta escolhido mais próximo.
+Locate Object|Concentração: sente a direção de um objeto conhecido a até 300 m.
+Magic Mouth|Uma boca ilusória num objeto fala uma mensagem quando uma condição acontece.
+Magic Weapon|Uma arma não mágica vira +1 por 1 hora (+2 ou +3 em círculos maiores).
+Melf's Acid Arrow|Ataque mágico à distância: 4d4 de dano ácido e mais 2d4 no fim do próximo turno do alvo.
+Mind Spike|Concentração: salvaguarda de SAB ou 3d8 de dano psíquico; você sabe onde o alvo está enquanto durar.
+Mirror Image|Três cópias ilusórias suas; ataques podem acertar uma cópia em vez de você.
+Misty Step|Ação bônus: você se teletransporta até 9 m para um espaço que vê.
+Moonbeam|Concentração: cilindro de luar; quem entra ou começa ali faz salvaguarda de CON ou sofre 2d10 de dano radiante.
+Nystul's Magic Aura|Disfarça ou esconde a aura mágica de um objeto ou criatura.
+Pass without Trace|Concentração: você e aliados a até 9 m ganham +10 em Furtividade e não deixam rastros.
+Phantasmal Force|Concentração: o alvo faz salvaguarda de INT ou vê uma ilusão que só ele percebe, podendo sofrer 1d8 de dano psíquico por turno.
+Prayer of Healing|Até cinco criaturas recuperam 2d8 + seu modificador em PV durante um descanso de 10 minutos.
+Protection from Poison|Remove o Envenenado; dá vantagem contra veneno e resistência a dano de veneno por 1 hora.
+Ray of Enfeeblement|Concentração: o alvo faz salvaguarda de CON ou causa menos dano com ataques de Força.
+Rope Trick|Uma corda leva a um espaço extradimensional escondido onde até oito criaturas se abrigam por 1 hora.
+Scorching Ray|Três raios de fogo, cada um com ataque mágico e 2d6 de dano (+1 raio por círculo acima).
+See Invisibility|Por 1 hora, você vê criaturas e objetos invisíveis e o Plano Etéreo.
+Shatter|Esfera de 3 m: salvaguarda de CON ou 3d8 de dano trovejante; objetos inanimados sofrem mais.
+Shining Smite|Ao acertar com arma: +2d6 de dano radiante, e o alvo brilha, dando vantagem aos ataques contra ele.
+Silence|Concentração: esfera de 6 m sem nenhum som; ninguém lá dentro conjura magias com componente verbal.
+Spider Climb|Concentração: uma criatura anda por paredes e tetos.
+Spike Growth|Concentração: área de 6 m vira terreno difícil; cada 1,5 m percorrido causa 2d4 de dano perfurante.
+Spiritual Weapon|Concentração: arma espectral que ataca como ação bônus (1d8 + seu modificador de dano de força).
+Suggestion|Concentração: sugere uma ação razoável; o alvo faz salvaguarda de SAB ou segue a sugestão.
+Summon Beast|Concentração: invoca um espírito de fera (terra, ar ou água) que luta ao seu lado.
+Warding Bond|Um aliado ganha +1 na CA e nas salvaguardas e resistência a dano; você sofre o mesmo dano que ele.
+Web|Concentração: teias num cubo de 6 m; terreno difícil, e quem falhar numa salvaguarda de DES fica Contido.
+Zone of Truth|Esfera de 4,5 m; quem falhar numa salvaguarda de CAR não consegue mentir deliberadamente.
+Animate Dead|Cria um esqueleto ou zumbi sob seu controle por 24 horas.
+Aura of Vitality|Concentração: a cada turno, ação bônus para curar 2d6 PV de uma criatura na aura.
+Beacon of Hope|Concentração: aliados têm vantagem em salvaguardas de SAB e testes contra a morte e recuperam o máximo de PV nas curas.
+Bestow Curse|Concentração: o alvo faz salvaguarda de SAB ou recebe uma maldição (desvantagem, dano extra, perder ações…).
+Blinding Smite|Ao acertar com arma: +3d8 de dano radiante, e o alvo fica Cego até passar numa salvaguarda de CON.
+Blink|Por 1 minuto, rola um dado a cada turno e pode sumir para o Plano Etéreo até o seu próximo turno.
+Call Lightning|Concentração: nuvem de tempestade; a cada turno, um raio causa 3d10 de dano elétrico (salvaguarda de DES).
+Clairvoyance|Concentração: cria um sensor invisível para ver ou ouvir um lugar que você conhece.
+Conjure Animals|Concentração: espíritos de feras formam uma matilha que causa dano a inimigos perto dela.
+Conjure Barrage|Cone de 18 m: armas espectrais causam 5d8 de dano (salvaguarda de DES, metade se passar).
+Counterspell|Reação: uma criatura conjurando a até 18 m faz salvaguarda de CON ou a magia falha.
+Create Food and Water|Cria comida e água para 15 humanoides ou 5 montarias por um dia.
+Crusader's Mantle|Concentração: você e aliados a até 9 m causam +1d4 de dano radiante com armas.
+Daylight|Esfera de 18 m de luz do dia que dissipa escuridão mágica de círculo menor.
+Dispel Magic|Encerra magias numa criatura, objeto ou efeito; as de círculo maior que o espaço usado pedem um teste.
+Elemental Weapon|Concentração: uma arma vira +1 e causa +1d4 de dano elemental.
+Fear|Concentração: cone de 9 m; salvaguarda de SAB ou fica Amedrontado, larga o que segura e foge.
+Feign Death|Uma criatura parece morta por 1 hora e resiste a quase todo dano.
+Fireball|Esfera de 6 m a até 45 m: salvaguarda de DES ou 8d6 de dano de fogo (metade se passar; +1d6 por círculo acima).
+Fly|Concentração: uma criatura ganha deslocamento de voo de 18 m.
+Gaseous Form|Concentração: a criatura vira névoa, voa devagar, passa por frestas e resiste a dano.
+Glyph of Warding|Escreve um glifo que dispara uma explosão ou uma magia guardada quando ativado.
+Haste|Concentração: +2 na CA, dobro de deslocamento, vantagem em salvaguardas de DES e uma ação extra; quando acaba, o alvo perde um turno.
+Hunger of Hadar|Concentração: esfera de escuridão gelada; 2d6 de dano de frio por turno e 2d6 ácido para quem termina o turno lá.
+Hypnotic Pattern|Concentração: criaturas num cubo de 9 m fazem salvaguarda de SAB ou ficam Enfeitiçadas e Incapacitadas.
+Leomund's Tiny Hut|Cúpula de 3 m que protege o grupo por 8 horas; nada de fora entra.
+Lightning Arrow|Seu ataque com arma à distância vira raio: 4d8 de dano elétrico no alvo e 2d8 em criaturas a 3 m (salvaguarda de DES).
+Lightning Bolt|Linha de 30 m: salvaguarda de DES ou 8d6 de dano elétrico (metade se passar).
+Magic Circle|Cilindro que impede um tipo de criatura (celestial, corruptor, morto-vivo…) de entrar ou sair.
+Major Image|Concentração: ilusão grande com imagem, som, cheiro e temperatura.
+Mass Healing Word|Ação bônus: até seis criaturas recuperam 2d4 + seu modificador em PV.
+Meld into Stone|Você entra numa pedra e fica dentro dela por até 8 horas.
+Nondetection|Por 8 horas, a criatura ou objeto não pode ser alvo de magias de adivinhação.
+Phantom Steed|Cria um cavalo fantasmagórico rápido por 1 hora.
+Plant Growth|Plantas numa área crescem: viram terreno muito difícil, ou as colheitas rendem mais por um ano.
+Protection from Energy|Concentração: resistência a ácido, frio, fogo, elétrico ou trovejante.
+Remove Curse|Encerra todas as maldições de uma criatura ou objeto.
+Revivify|Toque: traz de volta com 1 PV quem morreu há no máximo 1 minuto (consome diamantes).
+Sending|Envia uma mensagem curta a uma criatura conhecida, que pode responder na hora.
+Sleet Storm|Concentração: chuva de granizo numa área; terreno difícil, visão ruim, e quem entra pode cair e perder a concentração.
+Slow|Concentração: até seis criaturas fazem salvaguarda de SAB ou ficam lentas (−2 CA, metade do deslocamento, menos ações).
+Speak with Dead|Faz até cinco perguntas a um cadáver.
+Speak with Plants|Por 10 minutos, conversa com plantas e pode afetar o terreno de plantas.
+Spirit Guardians|Concentração: espíritos ao seu redor (4,5 m); inimigos sofrem 3d8 de dano radiante ou necrótico (salvaguarda de SAB) e andam mais devagar.
+Stinking Cloud|Concentração: esfera de gás; salvaguarda de CON ou perde a ação no turno.
+Summon Fey|Concentração: invoca um espírito feérico que luta ao seu lado.
+Summon Undead|Concentração: invoca um espírito morto-vivo que luta ao seu lado.
+Tongues|Por 1 hora, a criatura entende e fala qualquer idioma.
+Vampiric Touch|Concentração: ataque mágico corpo a corpo com 3d6 de dano necrótico; você recupera metade do dano.
+Water Breathing|Até dez criaturas respiram debaixo d'água por 24 horas.
+Water Walk|Até dez criaturas andam sobre água e outros líquidos por 1 hora.
+Wind Wall|Concentração: muralha de vento que desvia projéteis e gases; causa 4d8 de dano contundente ao surgir.
+Arcane Eye|Concentração: um olho invisível e voador que você controla e através do qual enxerga.
+Aura of Life|Concentração: você e aliados na aura têm resistência a necrótico, e quem estiver com 0 PV recupera 1 PV.
+Aura of Purity|Concentração: aliados na aura resistem a veneno e têm vantagem contra várias condições.
+Banishment|Concentração: o alvo faz salvaguarda de CAR ou é banido para outro plano.
+Blight|Uma criatura faz salvaguarda de CON ou sofre 8d8 de dano necrótico (plantas sofrem o máximo).
+Charm Monster|Uma criatura faz salvaguarda de SAB ou fica Enfeitiçada por você por 1 hora.
+Compulsion|Concentração: criaturas fazem salvaguarda de SAB ou se movem na direção que você mandar.
+Confusion|Concentração: criaturas numa esfera de 3 m fazem salvaguarda de SAB ou agem de forma aleatória.
+Conjure Minor Elementals|Concentração: espíritos elementais ao seu redor deixam o terreno difícil para inimigos e dão dano extra aos seus ataques.
+Conjure Woodland Beings|Concentração: espíritos feéricos ao seu redor causam dano a inimigos que se aproximam.
+Control Water|Concentração: controla a água numa área: inundar, dividir, redirecionar ou criar um redemoinho.
+Death Ward|Por 8 horas, na primeira vez que a criatura cairia a 0 PV, ela fica com 1 PV.
+Dimension Door|Teletransporta você (e uma criatura junto) até 150 m.
+Divination|Faz uma pergunta sobre algo dos próximos 7 dias e recebe uma resposta verdadeira.
+Dominate Beast|Concentração: uma fera faz salvaguarda de SAB ou fica sob seu controle.
+Evard's Black Tentacles|Concentração: tentáculos num quadrado de 6 m; salvaguarda de FOR ou 3d6 de dano e Contido.
+Fabricate|Transforma matéria-prima num objeto pronto.
+Fire Shield|Chamas ao seu redor: resistência a frio ou fogo e 2d8 de dano em quem o acerta corpo a corpo.
+Fount of Moonlight|Concentração: resistência a radiante, +2d6 de dano radiante nos ataques corpo a corpo e reação para cegar quem o fere.
+Freedom of Movement|Por 1 hora, a criatura ignora terreno difícil e não pode ser paralisada nem contida por magia.
+Giant Insect|Concentração: invoca um inseto gigante (aranha, centopeia ou vespa) que luta por você.
+Grasping Vine|Concentração: uma vinha puxa criaturas 9 m na sua direção (salvaguarda de FOR).
+Greater Invisibility|Concentração: Invisível por 1 minuto, mesmo atacando ou conjurando.
+Guardian of Faith|Um guardião espectral causa 20 de dano radiante a inimigos que se aproximam (até 60 no total).
+Hallucinatory Terrain|Faz um terreno natural parecer outro por 24 horas.
+Ice Storm|Cilindro de 6 m: salvaguarda de DES ou 2d10 contundente + 4d6 de frio; o chão vira terreno difícil.
+Leomund's Secret Chest|Esconde um baú no Plano Etéreo e o traz de volta quando quiser.
+Locate Creature|Concentração: sente a direção de uma criatura conhecida a até 300 m.
+Mordenkainen's Faithful Hound|Um cão invisível vigia uma área, late para intrusos e morde inimigos.
+Mordenkainen's Private Sanctum|Protege uma área contra espionagem, teletransporte e som.
+Otiluke's Resilient Sphere|Concentração: prende uma criatura numa esfera de força impenetrável.
+Phantasmal Killer|Concentração: o alvo faz salvaguarda de SAB ou sofre 4d10 de dano psíquico e desvantagem; repete a cada turno.
+Polymorph|Concentração: transforma uma criatura em fera (salvaguarda de SAB para resistir).
+Staggering Smite|Ao acertar com arma: +4d6 de dano psíquico, e o alvo faz salvaguarda de SAB ou fica Atordoado até o seu próximo turno.
+Stone Shape|Molda pedra em qualquer forma: passagens, armas, portas.
+Stoneskin|Concentração: resistência a dano contundente, cortante e perfurante.
+Summon Aberration|Concentração: invoca uma aberração que luta ao seu lado.
+Summon Construct|Concentração: invoca um constructo que luta ao seu lado.
+Summon Elemental|Concentração: invoca um espírito elemental que luta ao seu lado.
+Vitriolic Sphere|Esfera de 6 m: salvaguarda de DES ou 10d4 de dano ácido e mais 5d4 no próximo turno.
+Wall of Fire|Concentração: muralha de fogo; quem passa ou fica perto do lado quente sofre 5d8 de dano de fogo.
+Animate Objects|Concentração: objetos ganham vida e atacam sob seu comando.
+Antilife Shell|Concentração: barreira de 3 m que impede criaturas vivas de chegarem até você.
+Awaken|Dá inteligência e fala a uma fera ou planta, que fica amigável a você.
+Banishing Smite|Ao acertar com arma: +5d10 de dano de força; com 50 PV ou menos, o alvo é banido.
+Bigby's Hand|Concentração: uma mão gigante que golpeia, empurra, agarra ou protege.
+Circle of Power|Concentração: aliados a até 9 m têm vantagem em salvaguardas contra magia e não sofrem dano quando passam numa salvaguarda de metade.
+Cloudkill|Concentração: névoa venenosa que se move; salvaguarda de CON ou 5d8 de dano de veneno.
+Commune|Faz até três perguntas de sim ou não à sua divindade.
+Commune with Nature|Aprende fatos sobre a região ao redor (água, criaturas, construções).
+Cone of Cold|Cone de 18 m: salvaguarda de CON ou 8d8 de dano de frio (metade se passar).
+Conjure Elemental|Concentração: um espírito elemental numa área causa dano e pode conter criaturas.
+Conjure Volley|Área de 12 m: chuva de projéteis causa 8d8 de dano (salvaguarda de DES).
+Contact Other Plane|Faz até cinco perguntas a uma entidade de outro plano, com risco de dano psíquico.
+Contagion|Toque: o alvo faz salvaguardas de CON ou contrai uma doença mágica.
+Creation|Cria um objeto de matéria vegetal ou mineral que dura um tempo limitado.
+Destructive Wave|Onda de energia a até 9 m: salvaguarda de CON ou 5d6 trovejante + 5d6 radiante ou necrótico e Caído.
+Dispel Evil and Good|Concentração: proteção contra criaturas de outros planos; pode bani-las ou quebrar encantamentos.
+Dominate Person|Concentração: um humanoide faz salvaguarda de SAB ou fica sob seu controle.
+Dream|Entra nos sonhos de uma criatura para conversar ou causar pesadelos.
+Flame Strike|Coluna de 3 m: salvaguarda de DES ou 5d6 de dano de fogo + 5d6 radiante.
+Geas|Ordena uma tarefa por 30 dias; desobedecer causa dano psíquico.
+Greater Restoration|Remove exaustão, encantamento, petrificação, maldição ou redução de atributo.
+Hallow|Consagra uma área com efeitos de proteção contra certos tipos de criatura.
+Hold Monster|Concentração: uma criatura faz salvaguarda de SAB ou fica Paralisada.
+Insect Plague|Concentração: enxame numa esfera de 6 m; salvaguarda de CON ou 4d10 de dano perfurante.
+Jallarzi's Storm of Radiance|Concentração: cilindro de luz e trovão que causa 2d10 radiante + 2d10 trovejante e deixa cego e surdo.
+Legend Lore|Aprende lendas sobre uma pessoa, lugar ou objeto importante.
+Mass Cure Wounds|Até seis criaturas recuperam 5d8 + seu modificador em PV.
+Mislead|Concentração: você fica Invisível e cria uma cópia ilusória que você controla.
+Modify Memory|Concentração: altera as lembranças de uma criatura sobre as últimas 24 horas.
+Planar Binding|Prende uma criatura de outro plano ao seu serviço.
+Raise Dead|Ressuscita quem morreu há até 10 dias.
+Rary's Telepathic Bond|Até oito criaturas conversam por telepatia por 1 hora.
+Scrying|Concentração: espiona uma criatura em qualquer lugar do mesmo plano.
+Seeming|Muda a aparência de várias criaturas por 8 horas.
+Steel Wind Strike|Ataca até cinco criaturas a até 9 m (6d10 de dano de força cada) e se teletransporta para perto de uma delas.
+Summon Celestial|Concentração: invoca um celestial que luta ou cura.
+Summon Dragon|Concentração: invoca um espírito de dragão que luta ao seu lado.
+Swift Quiver|Concentração: ação bônus para dois ataques com arma de munição a cada turno.
+Synaptic Static|Esfera de 6 m: salvaguarda de INT ou 8d6 de dano psíquico e −1d6 em ataques e testes por um tempo.
+Telekinesis|Concentração: move criaturas e objetos grandes com a mente.
+Teleportation Circle|Cria um portal para um círculo de teletransporte conhecido.
+Tree Stride|Concentração: entra numa árvore e sai de outra a até 150 m.
+Wall of Force|Concentração: muralha invisível e indestrutível.
+Wall of Stone|Concentração: ergue uma muralha de pedra (fica permanente se mantiver até o fim).
+Yolande's Regal Presence|Concentração: aura de 3 m; inimigos fazem salvaguarda de SAB ou sofrem 4d6 de dano psíquico e são empurrados.
+Arcane Gate|Concentração: dois portais ligados a até 150 m um do outro.
+Blade Barrier|Concentração: muralha de lâminas giratórias que causa 6d10 de dano cortante (salvaguarda de DES).
+Chain Lightning|Raio que atinge um alvo e salta para outros três: 10d8 de dano elétrico (salvaguarda de DES).
+Circle of Death|Esfera de 18 m de energia negativa: salvaguarda de CON ou muito dano necrótico.
+Create Undead|Cria até três carniçais (ou mortos-vivos mais fortes em círculos maiores).
+Disintegrate|Raio de 10d6 + 40 de dano de força (salvaguarda de DES); quem cair a 0 PV vira pó.
+Drawmij's Instant Summons|Marca um objeto para trazê-lo de volta à sua mão de qualquer lugar.
+Eyebite|Concentração: a cada turno, uma criatura faz salvaguarda de SAB ou adormece, entra em pânico ou adoece.
+Find the Path|Concentração: você sabe o caminho mais rápido para um lugar fixo.
+Flesh to Stone|Concentração: o alvo vira pedra aos poucos (salvaguardas de CON).
+Forbiddance|Protege uma grande área contra teletransporte e certos tipos de criatura.
+Globe of Invulnerability|Concentração: esfera que bloqueia magias de 5º círculo ou menor.
+Guards and Wards|Protege uma construção com névoa, portas trancadas, teias e outros efeitos.
+Harm|Uma criatura faz salvaguarda de CON ou sofre 14d6 de dano necrótico e perde PV máximo.
+Heal|Uma criatura recupera 70 PV e é curada de Cega, Surda e Envenenada.
+Heroes' Feast|Banquete que cura, dá imunidades e aumenta o PV máximo de até doze criaturas por 24 horas.
+Magic Jar|Sua alma vai para um recipiente e pode possuir outro corpo.
+Mass Suggestion|Até doze criaturas fazem salvaguarda de SAB ou seguem uma sugestão por 24 horas.
+Move Earth|Concentração: remodela terra, areia ou barro numa área.
+Otiluke's Freezing Sphere|Esfera de 18 m: salvaguarda de CON ou 10d6 de dano de frio; congela água.
+Otto's Irresistible Dance|Concentração: o alvo dança sem parar, com desvantagem e sem conseguir sair do lugar.
+Planar Ally|Pede a ajuda de uma criatura de outro plano em troca de pagamento.
+Programmed Illusion|Uma ilusão que dispara quando uma condição acontece.
+Summon Fiend|Concentração: invoca um corruptor que luta ao seu lado.
+Sunbeam|Concentração: linha de luz; salvaguarda de CON ou 6d8 de dano radiante e Cego; pode repetir a cada turno.
+Tasha's Bubbling Cauldron|Cria um caldeirão que produz poções de uma magia de cura ou suporte.
+Transport via Plants|Liga duas plantas grandes como portais.
+True Seeing|Por 1 hora, vê através de ilusões, invisibilidade e escuridão, e a forma verdadeira das coisas.
+Wall of Ice|Concentração: muralha de gelo; criaturas atingidas quando ela surge sofrem 10d6 de dano de frio.
+Wall of Thorns|Concentração: muralha de espinhos que causa 7d8 de dano perfurante.
+Wind Walk|Você e aliados viram nuvens e viajam rápido pelo ar.
+Word of Recall|Você e aliados se teletransportam para um santuário preparado.
+Conjure Celestial|Concentração: coluna de luz celestial que cura aliados ou fere inimigos.
+Delayed Blast Fireball|Concentração: bola de fogo que acumula dano a cada turno até explodir (12d6 de fogo ou mais).
+Divine Word|Uma palavra divina que ensurdece, cega, atordoa ou mata criaturas conforme os PV atuais delas.
+Etherealness|Você entra no Plano Etéreo por até 8 horas.
+Finger of Death|Salvaguarda de CON ou 7d8 + 30 de dano necrótico; quem morrer vira um zumbi sob seu controle.
+Fire Storm|Vários cubos de fogo: salvaguarda de DES ou 7d10 de dano de fogo.
+Forcecage|Concentração: prende criaturas numa jaula invisível de força.
+Mirage Arcane|Faz um terreno parecer, soar e até ser sentido como outro.
+Mordenkainen's Magnificent Mansion|Cria uma mansão extradimensional para o grupo.
+Mordenkainen's Sword|Concentração: uma espada espectral que ataca como ação bônus (4d12 de dano de força).
+Plane Shift|Você e aliados viajam para outro plano (ou bane uma criatura para lá).
+Power Word Fortify|Distribui 120 PV temporários entre até seis criaturas.
+Prismatic Spray|Cone de raios coloridos: cada criatura sofre um efeito aleatório (dano de vários tipos, petrificação ou banimento).
+Project Image|Concentração: cria uma cópia ilusória sua em qualquer lugar que já viu; você vê e fala por ela.
+Regenerate|Cura 4d8 + 15 PV, recupera 1 PV por turno e faz membros perdidos crescerem de novo.
+Resurrection|Ressuscita quem morreu há até um século.
+Reverse Gravity|Concentração: inverte a gravidade num cilindro; criaturas e objetos caem para cima.
+Sequester|Esconde uma criatura ou objeto de qualquer detecção e o deixa em estado suspenso.
+Simulacrum|Cria uma cópia de gelo e neve de uma criatura que obedece você.
+Symbol|Inscreve um símbolo que dispara um efeito poderoso (dor, sono, medo, morte…).
+Teleport|Teletransporta você e até oito criaturas para um lugar no mesmo plano.
+Animal Shapes|Transforma criaturas em feras por até 24 horas.
+Antimagic Field|Concentração: esfera de 3 m onde nenhuma magia funciona.
+Antipathy/Sympathy|Atrai ou repele um tipo de criatura de um lugar ou objeto por 10 dias.
+Befuddlement|Salvaguarda de INT ou 10d12 de dano psíquico, e o alvo não consegue conjurar magias nem pensar direito.
+Clone|Cria uma cópia do corpo que recebe sua alma se você morrer.
+Control Weather|Concentração: muda o clima numa área de vários quilômetros.
+Demiplane|Cria uma porta para um semiplano vazio.
+Dominate Monster|Concentração: uma criatura faz salvaguarda de SAB ou fica sob seu controle.
+Earthquake|Concentração: terremoto numa área; criaturas caem e estruturas desabam.
+Glibness|Por 1 hora, seus testes de Carisma tiram no mínimo 15 e magias não detectam suas mentiras.
+Holy Aura|Concentração: aliados têm vantagem em salvaguardas, e inimigos têm desvantagem para atacá-los.
+Incendiary Cloud|Concentração: nuvem de brasas que se move; salvaguarda de DES ou 10d8 de dano de fogo.
+Maze|Concentração: prende uma criatura num labirinto extradimensional.
+Mind Blank|Por 24 horas, a criatura é imune a dano psíquico, leitura de mente e Enfeitiçado.
+Power Word Stun|Uma criatura com 150 PV ou menos fica Atordoada.
+Sunburst|Esfera de 18 m: salvaguarda de CON ou 12d6 de dano radiante e Cego.
+Telepathy|Comunicação telepática com uma criatura conhecida em qualquer lugar do plano.
+Tsunami|Concentração: muralha de água que causa 6d10 de dano contundente e arrasta criaturas.
+Astral Projection|Você e aliados viajam ao Plano Astral.
+Foresight|Por 8 horas, a criatura tem vantagem em testes de d20, e ataques contra ela têm desvantagem.
+Gate|Concentração: abre um portal para outro plano (e pode trazer uma criatura específica).
+Imprisonment|Aprisiona uma criatura de forma mágica e permanente.
+Mass Heal|Distribui até 700 PV de cura entre criaturas e remove várias condições.
+Meteor Swarm|Quatro meteoros: 20d6 de fogo + 20d6 contundente em esferas de 12 m (salvaguarda de DES).
+Power Word Heal|Cura totalmente uma criatura e remove várias condições.
+Power Word Kill|Uma criatura com 100 PV ou menos morre; as outras sofrem 12d12 de dano psíquico.
+Prismatic Wall|Muralha de sete camadas coloridas, cada uma com um efeito perigoso.
+Shapechange|Concentração: assume a forma de outra criatura e pode trocar de forma.
+Storm of Vengeance|Concentração: tempestade enorme com trovões, chuva ácida, raios e granizo.
+Time Stop|O tempo para: você age por 1d4 + 1 turnos seguidos.
+True Polymorph|Concentração: transforma uma criatura ou objeto em outra coisa (vira permanente após 1 hora).
+True Resurrection|Ressuscita quem morreu há até 200 anos, mesmo sem corpo.
+Weird|Concentração: criaturas fazem salvaguarda de SAB ou sofrem 4d10 de dano psíquico e ficam Amedrontadas.
+Wish|A magia mais poderosa: reproduz qualquer magia de 8º círculo ou menor, ou realiza um desejo (com riscos).`;
+const SPELL_DESC = Object.fromEntries(SPELL_DESC_RAW.split("\n").map(l => { const i = l.indexOf("|"); return [l.slice(0, i), l.slice(i + 1)]; }));
 const SCHOOLS = { A:"Abjuração", V:"Evocação", C:"Conjuração", D:"Adivinhação", E:"Encantamento", T:"Transmutação", I:"Ilusão", N:"Necromancia" };
 const SPELL_LETTER = { "Bardo":"b", "Clérigo":"c", "Druida":"d", "Paladino":"p", "Patrulheiro":"r", "Feiticeiro":"s", "Bruxo":"k", "Mago":"w" };
 const LETTER_CLASS = Object.fromEntries(Object.entries(SPELL_LETTER).map(([k, v]) => [v, k]));
 const slug = t => normTxt(t).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-const SPELLS = SPELLS_RAW.split("\n").map(l => { const [en, n, lvl, sch, cls, fl, dmg] = l.split(";"); return { k: slug(en), en, n, lvl: +lvl, sch, cls, conc: fl.includes("c"), rit: fl.includes("r"), dmg: dmg || "" }; });
+const SPELLS = SPELLS_RAW.split("\n").map(l => { const [en, n, lvl, sch, cls, fl, dmg] = l.split(";"); return { k: slug(en), en, n, lvl: +lvl, sch, cls, conc: fl.includes("c"), rit: fl.includes("r"), dmg: dmg || "", desc: SPELL_DESC[en] || "" }; });
+const SPELL_BY_EN = Object.fromEntries(SPELLS.map(x => [x.en.toLowerCase(), x]));
+const spellNotes = x => `${x.desc ? x.desc + " " : ""}${SCHOOLS[x.sch]}. Nome original: ${x.en}.` + (x.k === "eldritch-blast" ? " Raios: 1 (2 no nível 5, 3 no 11, 4 no 17)." : "");
+// magias já na ficha ganham o resumo (uma vez, sem mexer no que foi editado)
+function syncSpellDescs(c){
+  let changed = false;
+  for (const s of c.spell.list) {
+    if (s.descV || s.edited) continue;
+    const m = /Nome original: ([^.]+)\./.exec(s.notes || "");
+    const x = (s.ref && SPELLS.find(y => y.k === s.ref)) || (m && SPELL_BY_EN[m[1].trim().toLowerCase()]);
+    if (x && x.desc && !(s.notes || "").includes(x.desc)) { s.notes = s.auto ? (s.notes || "").replace(/^/, x.desc + " ") : spellNotes(x); changed = true; }
+    s.descV = 1;
+  }
+  return changed;
+}
 const T3 = (a, b, c) => l => l >= 10 ? c : l >= 4 ? b : a;
 const CANTRIPS_KNOWN = { "Bardo":T3(2,3,4), "Clérigo":T3(3,4,5), "Druida":T3(2,3,4), "Feiticeiro":T3(4,5,6), "Bruxo":T3(2,3,4), "Mago":T3(3,4,5), "Paladino":() => 0, "Patrulheiro":() => 0 };
 const PREP_FULL = [4,5,6,7,9,10,11,12,14,15,16,16,17,17,18,18,19,20,21,22];
@@ -2134,14 +2535,14 @@ function renderSpellPicker(){
     const got = have.has(x.k);
     const meta = [x.lvl ? x.lvl + "º círculo" : "Truque", SCHOOLS[x.sch], x.conc ? "concentração" : "", x.rit ? "ritual" : "", x.dmg ? "dano/cura " + x.dmg.replace("+MOD", " + mod.") : "", spAll ? x.cls.split("").map(l => LETTER_CLASS[l]).join(", ") : ""].filter(Boolean).join(". ");
     return `<div class="item"><div class="item-h"><span class="t">${esc(x.n)} <span class="muted small" style="font-weight:500">${esc(x.en)}</span>${x.conc ? '<span class="tag c">C</span>' : ""}${x.rit ? '<span class="tag r">R</span>' : ""}</span>
-      <button class="btn sm ${got ? "" : "gold"}" data-act="${got ? "sp-cat-del" : "sp-cat-add"}" data-k="${x.k}">${got ? "Remover" : "Adicionar"}</button></div><div class="meta">${esc(meta)}.</div></div>`;
+      <button class="btn sm ${got ? "" : "gold"}" data-act="${got ? "sp-cat-del" : "sp-cat-add"}" data-k="${x.k}">${got ? "Remover" : "Adicionar"}</button></div><div class="meta">${esc(meta)}.</div>${x.desc ? `<p class="ftxt small" style="margin-top:4px">${esc(x.desc)}</p>` : ""}</div>`;
   }).join("") || `<div class="empty">Nenhuma magia encontrada.</div>`;
 }
 function addSpellFromCatalog(k){
   const c = ch(), x = SPELLS.find(y => y.k === k); if (!x || c.spell.list.some(s => s.ref === k)) return;
   const r = spellRules(c), cnt = spellCounts(c);
   const prep = x.lvl === 0 ? true : !r || cnt.prepared < r.prepared;
-  c.spell.list.push({ id: uid(), ref: x.k, name: x.n, lvl: x.lvl, prep, conc: x.conc, rit: x.rit, dmg: x.dmg, notes: `${SCHOOLS[x.sch]}. Nome original: ${x.en}.` + (x.k === "eldritch-blast" ? " Raios por conjuração: 1 (2 no nível 5, 3 no 11, 4 no 17)." : "") });
+  c.spell.list.push({ id: uid(), ref: x.k, name: x.n, lvl: x.lvl, prep, conc: x.conc, rit: x.rit, dmg: x.dmg, notes: spellNotes(x), descV: 1 });
   save(); render(); renderSpellPicker();
 }
 
@@ -2312,6 +2713,17 @@ function buildPdf(c){
       y = wrap(f.text, M, y, W - 2 * M, 7.8, 3.5, H - 14, brk) + 1.8;
     }
     y += 1.5;
+  }
+  if (c.spell.list.length) {
+    if (y > H - 40) y = newPage();
+    y = sectionTitle("Magias: o que cada uma faz", y + 2);
+    const sbrk = () => sectionTitle("Magias (continuação)", newPage());
+    for (const s of c.spell.list.slice().sort((a, b) => a.lvl - b.lvl || a.name.localeCompare(b.name))) {
+      if (y > H - 22) y = sbrk();
+      font(8.6, "bold"); color(INK); txt(s.name + `  (${s.lvl ? s.lvl + "º círculo" : "truque"}${s.conc ? ", concentração" : ""}${s.rit ? ", ritual" : ""})`, M, y); y += 3.9;
+      const extra = spellExpr(c, s) ? `Rolagem: ${spellExpr(c, s)}. ` : "";
+      y = wrap(extra + (s.notes || "-"), M, y, W - 2 * M, 7.8, 3.5, H - 14, sbrk) + 1.8;
+    }
   }
   const notes = [["Personalidade e história", c.notes.personality], ["Anotações de traços e talentos", c.notes.features], ["Outras anotações", c.notes.other]].filter(n => (n[1] || "").trim());
   for (const [t, v] of notes) {
@@ -2910,7 +3322,8 @@ function render(){
   const sig = () => c.hp.max + "|" + c.ac + "|" + c.featKeys.join(",") + "|" + c.resources.map(r => r.max).join(",");
   const before = sig();
   syncDerived(c);
-  if (before !== sig()) save(c);
+  const descChanged = syncSpellDescs(c);
+  if (before !== sig() || descChanged) save(c);
   renderHeader(); renderTabs();
   const v = { ficha: vFicha, combate: vCombate, magias: vMagias, itens: vItens, notas: vNotas, dados: vDados }[tab];
   main.innerHTML = v(c);
@@ -3127,11 +3540,12 @@ function dlgSpell(s){
     ${chk("prep", s.prep, "Preparada")}
     ${chk("conc", s.conc, "Concentração")}
     ${chk("rit", s.rit, "Ritual")}
-    ${fld("Resumo", `<textarea name="notes" rows="3" maxlength="400" placeholder="Alcance, duração, efeito…">${esc(s.notes)}</textarea>`)}
+    ${fld("Resumo", `<textarea name="notes" rows="5" maxlength="1200" placeholder="Alcance, duração, efeito…">${esc(s.notes)}</textarea>`)}
     ${dlgActs(!isNew)}</form>`, (o, btn) => {
       if (btn === "del") c.spell.list = c.spell.list.filter(x => x.id !== s.id);
       else {
         if (o.dmg.trim() && !parseExpr(o.dmg)) { dlgError("Dano inválido. Use algo como 8d6 ou 1d8+3."); return; }
+        if (!isNew && o.notes.trim() !== (s.notes || "")) s.edited = true;
         Object.assign(s, { name:o.name.trim(), lvl:clampInt(o.lvl,0,9), prep:o.prep, conc:o.conc, rit:o.rit, dmg:o.dmg.trim(), notes:o.notes.trim() });
         if (s.auto) s.edited = true;
         if (isNew) c.spell.list.push(s);
