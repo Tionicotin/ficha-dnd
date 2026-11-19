@@ -1,0 +1,1117 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ficha D&amp;D 2024</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700&family=Alegreya+Sans:wght@400;500;700;800&display=swap">
+<style>
+:root{
+  --bg:#EEF0F3;--surface:#FFFFFF;--surface2:#F3F4F7;--line:#D5D9E0;--ink:#1F2430;--mute:#596070;
+  --gold:#8F620C;--gold-bg:#FBF1DC;--red:#B23A2E;--red-bg:#FBE7E4;--green:#2B7A4F;--green-bg:#E2F3E9;--blue:#2F5F9A;--blue-bg:#E4EDF8;
+  --shadow:0 1px 2px rgba(20,24,32,.08);
+  --head:"Alegreya SC",Georgia,"Times New Roman",serif;
+  --body:"Alegreya Sans","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#1F2530;--surface:#2A3140;--surface2:#343C4D;--line:#465166;--ink:#EEE8DC;--mute:#AEB5C2;
+    --gold:#E8B04B;--gold-bg:#3E3626;--red:#EE7D72;--red-bg:#4A2D2D;--green:#6CC897;--green-bg:#253F33;--blue:#8DBBEB;--blue-bg:#263850;
+    --shadow:none;color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1F2530;--surface:#2A3140;--surface2:#343C4D;--line:#465166;--ink:#EEE8DC;--mute:#AEB5C2;
+  --gold:#E8B04B;--gold-bg:#3E3626;--red:#EE7D72;--red-bg:#4A2D2D;--green:#6CC897;--green-bg:#253F33;--blue:#8DBBEB;--blue-bg:#263850;
+  --shadow:none;color-scheme:dark;
+}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 120px)}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.4 var(--body);-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ---------- topo ---------- */
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--surface);border-bottom:1px solid var(--line);padding:10px 14px 8px}
+.top-row{display:flex;align-items:center;gap:10px;max-width:760px;margin:0 auto}
+.who{flex:1;min-width:0;background:none;border:0;padding:4px 0;text-align:left;min-height:44px}
+.who .nm{display:block;font:700 23px/1.1 var(--head);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.who .sub{display:block;color:var(--mute);font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hpchip{border:1.5px solid var(--line);background:var(--surface2);border-radius:12px;padding:4px 10px;min-height:44px;min-width:76px;text-align:center;line-height:1.05}
+.hpchip b{display:block;font:700 20px/1.1 var(--body);font-variant-numeric:tabular-nums}
+.hpchip small{color:var(--mute);font-size:12.5px}
+.hpchip.low{border-color:var(--red);background:var(--red-bg)}
+.hpchip.low b{color:var(--red)}
+.mode{display:flex;max-width:760px;margin:8px auto 0;background:var(--surface2);border:1px solid var(--line);border-radius:11px;padding:3px}
+.mode button{flex:1;border:0;background:none;border-radius:8px;padding:7px 4px;font-size:15px;font-weight:500;color:var(--mute);min-height:38px}
+.mode button[aria-pressed="true"]{background:var(--surface);color:var(--ink);font-weight:700;box-shadow:var(--shadow);outline:1px solid var(--line)}
+.mode button[data-mode="adv"][aria-pressed="true"]{color:var(--green)}
+.mode button[data-mode="dis"][aria-pressed="true"]{color:var(--red)}
+
+/* ---------- conteúdo ---------- */
+main{max-width:760px;margin:0 auto;padding:14px 14px calc(96px + env(safe-area-inset-bottom,0px))}
+section.blk{margin:0 0 22px}
+h2{font:700 21px/1.2 var(--head);margin:0 0 10px;display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+h2 .aside{font:500 15px var(--body);color:var(--mute)}
+h3{font:700 18px/1.2 var(--head);margin:16px 0 8px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:var(--shadow)}
+.muted{color:var(--mute)}
+.small{font-size:14.5px}
+.row{display:flex;gap:10px;align-items:center}
+.wrap{flex-wrap:wrap}
+.grow{flex:1;min-width:0}
+.num{font-variant-numeric:tabular-nums}
+
+/* atributos: placas com cantos cortados */
+.abil{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.ab{background:var(--surface);border:1px solid var(--line);padding:10px 6px 8px;text-align:center;
+  clip-path:polygon(12px 0,calc(100% - 12px) 0,100% 12px,100% calc(100% - 12px),calc(100% - 12px) 100%,12px 100%,0 calc(100% - 12px),0 12px);
+  box-shadow:inset 0 0 0 1px var(--line)}
+.ab .lbl{font:700 15px var(--head);color:var(--mute)}
+.ab .mod{display:block;width:100%;border:0;background:none;font:800 34px/1.05 var(--body);font-variant-numeric:tabular-nums;padding:2px 0;min-height:48px;border-radius:8px}
+.ab .mod:active{background:var(--surface2)}
+.ab input{width:58px;text-align:center;border:1px solid var(--line);border-radius:8px;background:var(--surface2);padding:4px 2px;font-weight:700;font-size:16px}
+.ab .sv{display:flex;align-items:center;justify-content:center;gap:4px;margin-top:6px}
+.ab .sv button{border:1px solid var(--line);background:var(--surface2);border-radius:999px;padding:4px 8px;font-size:13.5px;min-height:36px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.ab .sv button.on{border-color:var(--gold);background:var(--gold-bg);color:var(--gold);font-weight:700}
+
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.st{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:8px 4px;text-align:center}
+.st .v{font:800 23px/1.15 var(--body);font-variant-numeric:tabular-nums;display:block}
+.st .k{font-size:13px;color:var(--mute)}
+.st input{width:100%;max-width:64px;text-align:center;border:0;border-bottom:1px dashed var(--line);background:none;font:800 23px/1.15 var(--body);padding:0}
+button.st{width:100%}
+
+/* perícias */
+.skills{list-style:none;margin:0;padding:0}
+.skills li{display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line);min-height:50px}
+.skills li:last-child{border-bottom:0}
+.pip{width:44px;height:44px;flex:none;border:0;background:none;display:grid;place-items:center;padding:0}
+.pip i{width:16px;height:16px;border-radius:50%;border:2px solid var(--mute);display:block}
+.pip[data-v="1"] i{background:var(--gold);border-color:var(--gold)}
+.pip[data-v="2"] i{background:var(--gold);border-color:var(--gold);box-shadow:0 0 0 3px var(--surface),0 0 0 5px var(--gold)}
+.skills .nm{flex:1;min-width:0}
+.skills .nm small{color:var(--mute);margin-left:4px}
+.rollbtn{border:1px solid var(--line);background:var(--surface2);border-radius:10px;min-width:58px;min-height:40px;font-weight:800;font-variant-numeric:tabular-nums;padding:4px 10px}
+.rollbtn:active{transform:translateY(1px)}
+
+/* PV */
+.hp{padding:14px}
+.hp-top{display:flex;align-items:flex-end;justify-content:space-between;gap:10px}
+.hp-big{font:700 52px/1 var(--head);font-variant-numeric:tabular-nums}
+.hp-big small{font:500 22px var(--body);color:var(--mute)}
+.hp-temp{text-align:right;color:var(--blue);font-weight:700}
+.bar{height:12px;border-radius:999px;background:var(--surface2);border:1px solid var(--line);overflow:hidden;margin:10px 0 12px;display:flex}
+.bar i{display:block;height:100%;background:var(--green)}
+.bar i.t{background:var(--blue)}
+.bar.low i:first-child{background:var(--red)}
+.hp-ctl{display:grid;grid-template-columns:1fr repeat(3,auto);gap:8px}
+.hp-ctl input{min-width:0;border:1.5px solid var(--line);border-radius:12px;background:var(--surface2);padding:8px 12px;font-size:22px;font-weight:700;text-align:center}
+.btn{border:1.5px solid var(--line);background:var(--surface2);border-radius:12px;padding:8px 14px;min-height:46px;font-weight:700}
+.btn.red{background:var(--red-bg);border-color:var(--red);color:var(--red)}
+.btn.green{background:var(--green-bg);border-color:var(--green);color:var(--green)}
+.btn.blue{background:var(--blue-bg);border-color:var(--blue);color:var(--blue)}
+.btn.gold{background:var(--gold-bg);border-color:var(--gold);color:var(--gold)}
+.btn.ghost{background:none}
+.btn.full{width:100%}
+.btn svg{width:18px;height:18px;vertical-align:-3px;margin-right:2px}
+.btn.sm{min-height:40px;padding:6px 11px;font-size:15px}
+.mini{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}
+.mini>div{display:flex;flex-direction:column;justify-content:flex-end;gap:3px}
+.mini label{font-size:13.5px;color:var(--mute);display:block;text-align:center}
+.mini input{width:100%;text-align:center;border:1px solid var(--line);border-radius:10px;background:var(--surface2);padding:6px;font-weight:700;font-size:18px}
+
+.dots{display:flex;gap:6px}
+.dot{width:40px;height:40px;border-radius:50%;border:2px solid var(--line);background:var(--surface2)}
+.dot.s.on{background:var(--green);border-color:var(--green)}
+.dot.f.on{background:var(--red);border-color:var(--red)}
+.ds{display:grid;grid-template-columns:auto 1fr;gap:8px 12px;align-items:center}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1.5px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 13px;min-height:40px;font-size:15.5px}
+.chip[aria-pressed="true"]{border-color:var(--red);background:var(--red-bg);color:var(--red);font-weight:700}
+.chip.ins[aria-pressed="true"]{border-color:var(--gold);background:var(--gold-bg);color:var(--gold)}
+.stepper{display:flex;align-items:center;gap:8px}
+.stepper button{width:44px;height:44px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface2);font-size:22px;font-weight:700}
+.stepper output{min-width:32px;text-align:center;font:800 24px var(--body)}
+
+/* listas editáveis */
+.list{display:flex;flex-direction:column;gap:10px}
+.item{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 12px}
+.item-h{display:flex;align-items:center;gap:8px}
+.item-h .t{flex:1;min-width:0;font-weight:700;font-size:18px;overflow:hidden;text-overflow:ellipsis}
+.item .meta{color:var(--mute);font-size:14.5px;margin-top:2px}
+.acts{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.iconbtn{width:44px;height:44px;flex:none;border:0;background:none;border-radius:10px;display:grid;place-items:center;color:var(--mute)}
+.iconbtn:active{background:var(--surface2)}
+.iconbtn svg{width:22px;height:22px}
+.pips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.pips button{width:34px;height:34px;border-radius:8px;border:2px solid var(--gold);background:var(--gold-bg)}
+.pips button.used{background:none;border-color:var(--line)}
+.empty{border:1.5px dashed var(--line);border-radius:14px;padding:16px;text-align:center;color:var(--mute)}
+
+.slots{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.slot{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:8px}
+.slot .h{display:flex;justify-content:space-between;align-items:center;font-weight:700}
+.slot .h input{width:46px;text-align:center;border:1px solid var(--line);border-radius:8px;background:var(--surface2);padding:2px}
+.slot .pips button{width:28px;height:28px}
+.lvlh{font:700 17px var(--head);color:var(--mute);margin:14px 0 6px}
+.tag{display:inline-block;font-size:12.5px;font-weight:700;border-radius:6px;padding:1px 6px;margin-left:4px;vertical-align:2px}
+.tag.c{background:var(--blue-bg);color:var(--blue)}
+.tag.r{background:var(--green-bg);color:var(--green)}
+.prep{border:1.5px solid var(--line);background:none;border-radius:8px;min-height:36px;padding:2px 9px;font-size:14px}
+.prep[aria-pressed="true"]{border-color:var(--gold);background:var(--gold-bg);color:var(--gold);font-weight:700}
+
+.coins{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.coins label{text-align:center;font-size:13.5px;color:var(--mute);font-weight:700}
+.coins input{width:100%;text-align:center;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:7px 2px;font-weight:700;font-size:17px}
+
+textarea.note{width:100%;min-height:120px;border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:10px 12px;line-height:1.5;resize:vertical}
+label.fl{display:block;font-weight:700;margin:12px 0 4px}
+
+/* dados */
+.dice{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.die{min-height:60px;border-radius:14px;border:1.5px solid var(--line);background:var(--surface);font:700 20px var(--head)}
+.log{list-style:none;margin:0;padding:0}
+.log li{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid var(--line);padding:9px 0}
+.log li b{font-size:21px;font-variant-numeric:tabular-nums}
+
+/* navegação */
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:9;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav.tabs .in{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));max-width:760px;margin:0 auto}
+nav.tabs button{border:0;background:none;padding:7px 2px 6px;min-height:58px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12.5px;color:var(--mute)}
+nav.tabs svg{width:24px;height:24px}
+nav.tabs button[aria-current="page"]{color:var(--gold);font-weight:800}
+
+/* resultado da rolagem */
+.toast{position:fixed;left:50%;transform:translate(-50%,20px);bottom:calc(70px + env(safe-area-inset-bottom,0px));z-index:20;width:min(92vw,420px);
+  background:var(--surface);border:2px solid var(--gold);border-radius:16px;padding:12px 14px;box-shadow:0 8px 28px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .15s,transform .15s}
+.toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.toast .tl{display:flex;justify-content:space-between;gap:10px;align-items:center}
+.toast .lab{font-weight:700}
+.toast .tot{font:700 46px/1 var(--head);font-variant-numeric:tabular-nums}
+.toast .brk{color:var(--mute);font-size:15px;margin-top:4px}
+.toast.crit{border-color:var(--green)}.toast.crit .tot{color:var(--green)}
+.toast.fumble{border-color:var(--red)}.toast.fumble .tot{color:var(--red)}
+.toast .acts{margin-top:8px}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+
+/* diálogos */
+dialog{border:1px solid var(--line);border-radius:18px;background:var(--surface);color:var(--ink);padding:0;width:min(94vw,520px);max-height:88vh}
+dialog::backdrop{background:rgba(10,12,18,.55)}
+.dlg{padding:16px;overflow:auto;max-height:88vh}
+.dlg h2{margin-bottom:6px}
+.fld{display:block;margin:10px 0}
+.fld span{display:block;font-size:14.5px;color:var(--mute);margin-bottom:3px}
+.fld input,.fld select,.fld textarea{width:100%;border:1.5px solid var(--line);border-radius:10px;background:var(--surface2);padding:9px 11px;font-size:17px;min-height:46px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 10px}
+.chk{display:flex;align-items:center;gap:10px;min-height:44px}
+.chk input{width:22px;height:22px;accent-color:var(--gold)}
+.dlg .acts{justify-content:flex-end;margin-top:14px}
+.err{color:var(--red);background:var(--red-bg);border-radius:10px;padding:8px 10px;margin:10px 0 0;font-weight:700}
+.charlist{list-style:none;margin:8px 0;padding:0}
+.charlist li{display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--line)}
+.charlist li button.pick{flex:1;text-align:left;border:0;background:none;padding:10px 4px;min-height:52px}
+.charlist li button.pick[aria-current="true"] b{color:var(--gold)}
+.sync{font-size:13.5px;color:var(--mute);text-align:center;margin:18px 0 0}
+@media (max-width:360px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.slots{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-row">
+    <button class="who" id="whoBtn" aria-label="Trocar ou editar personagem"><span class="nm" id="hName"></span><span class="sub" id="hSub"></span></button>
+    <button class="hpchip" id="hpChip" aria-label="Pontos de vida"><b id="hpChipV"></b><small>PV</small></button>
+  </div>
+  <div class="mode" role="group" aria-label="Modo de rolagem d20">
+    <button data-mode="dis" aria-pressed="false">Desvantagem</button>
+    <button data-mode="norm" aria-pressed="true">Normal</button>
+    <button data-mode="adv" aria-pressed="false">Vantagem</button>
+  </div>
+</header>
+<main id="main"></main>
+<nav class="tabs" aria-label="Seções da ficha"><div class="in" id="tabs"></div></nav>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<dialog id="dlg"><div class="dlg" id="dlgBody"></div></dialog>
+<input type="file" id="importFile" accept="application/json,.json" class="sr" tabindex="-1" aria-hidden="true">
+<script>
+"use strict";
+/* ================= REGRAS (D&D 2024) ================= */
+const ABIL = [["str","Força","FOR"],["dex","Destreza","DES"],["con","Constituição","CON"],["int","Inteligência","INT"],["wis","Sabedoria","SAB"],["cha","Carisma","CAR"]];
+const ABN = Object.fromEntries(ABIL.map(a => [a[0], a[2]]));
+const SKILLS = [
+  ["acro","Acrobacia","dex"],["anim","Adestrar Animais","wis"],["arca","Arcanismo","int"],["athl","Atletismo","str"],
+  ["perf","Atuação","cha"],["dece","Enganação","cha"],["stea","Furtividade","dex"],["hist","História","int"],
+  ["inti","Intimidação","cha"],["insi","Intuição","wis"],["inve","Investigação","int"],["medi","Medicina","wis"],
+  ["natu","Natureza","int"],["perc","Percepção","wis"],["pers","Persuasão","cha"],["slei","Prestidigitação","dex"],
+  ["reli","Religião","int"],["surv","Sobrevivência","wis"]
+];
+// classe: [dado de vida, salvaguardas, tipo de conjurador, atributo de conjuração]
+const CLASSES = {
+  "Bárbaro":[12,["str","con"],"",""], "Bardo":[8,["dex","cha"],"full","cha"], "Bruxo":[8,["wis","cha"],"pact","cha"],
+  "Clérigo":[8,["wis","cha"],"full","wis"], "Druida":[8,["int","wis"],"full","wis"], "Feiticeiro":[6,["con","cha"],"full","cha"],
+  "Guerreiro":[10,["str","con"],"",""], "Ladino":[8,["dex","int"],"",""], "Mago":[6,["int","wis"],"full","int"],
+  "Monge":[8,["str","dex"],"",""], "Paladino":[10,["wis","cha"],"half","cha"], "Patrulheiro":[10,["str","dex"],"half","wis"],
+  "Outra":[8,[],"",""]
+};
+const FULL = [[],[2],[3],[4,2],[4,3],[4,3,2],[4,3,3],[4,3,3,1],[4,3,3,2],[4,3,3,3,1],[4,3,3,3,2],[4,3,3,3,2,1],[4,3,3,3,2,1],
+  [4,3,3,3,2,1,1],[4,3,3,3,2,1,1],[4,3,3,3,2,1,1,1],[4,3,3,3,2,1,1,1],[4,3,3,3,2,1,1,1,1],[4,3,3,3,3,1,1,1,1],[4,3,3,3,3,2,1,1,1],[4,3,3,3,3,2,2,1,1]];
+const HALF = [[],[2],[2],[3],[3],[4,2],[4,2],[4,3],[4,3],[4,3,2],[4,3,2],[4,3,3],[4,3,3],[4,3,3,1],[4,3,3,1],[4,3,3,2],[4,3,3,2],[4,3,3,3,1],[4,3,3,3,1],[4,3,3,3,2],[4,3,3,3,2]];
+function pactSlots(l){ const n = l >= 17 ? 4 : l >= 11 ? 3 : l >= 2 ? 2 : 1; const lv = Math.min(5, Math.ceil(l / 2)); const a = Array(lv).fill(0); a[lv-1] = n; return a; }
+const CONDITIONS = ["Agarrado","Amedrontado","Atordoado","Caído","Cego","Contido","Enfeitiçado","Envenenado","Incapacitado","Inconsciente","Invisível","Paralisado","Petrificado","Surdo"];
+const MASTERIES = ["","Ágil (Nick)","Atordoante (Topple)","Cortar (Cleave)","Drenar (Sap)","Empurrar (Push)","Lentidão (Slow)","Raspar (Graze)","Vexar (Vex)"];
+
+const prof = l => 2 + Math.floor((Math.max(1, Math.min(20, l)) - 1) / 4);
+const mod = s => Math.floor(((+s || 0) - 10) / 2);
+const sg = n => (n >= 0 ? "+" : "−") + Math.abs(n);
+const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const clampInt = (v, lo, hi) => { v = parseInt(v, 10); if (isNaN(v)) v = lo; return Math.max(lo, Math.min(hi, v)); };
+
+function blank(){
+  return {
+    v:1, id:uid(), name:"Novo personagem", species:"", cls:"Guerreiro", subclass:"", level:1, background:"", alignment:"", size:"Médio",
+    hdOverride:0, abilities:{str:10,dex:10,con:10,int:10,wis:10,cha:10}, saves:{str:true,con:true}, skills:{},
+    ac:10, speed:9, initBonus:0,
+    hp:{cur:10,max:10,temp:0}, hdUsed:0, death:{s:0,f:0}, inspiration:false, exhaustion:0, conditions:[],
+    attacks:[], resources:[],
+    spell:{abil:"int", slots:Array.from({length:9},()=>({max:0,used:0})), list:[]},
+    items:[], coins:{pc:0,pp:0,pe:0,po:0,pl:0},
+    notes:{features:"",profs:"",langs:"",personality:"",other:""},
+    updated:Date.now()
+  };
+}
+function normalize(c){
+  const b = blank();
+  c = Object.assign(b, c || {});
+  for (const k of ["abilities","coins","notes","hp","death"]) c[k] = Object.assign(blank()[k], c[k] || {});
+  c.spell = Object.assign(blank().spell, c.spell || {});
+  if (!Array.isArray(c.spell.slots) || c.spell.slots.length !== 9) c.spell.slots = blank().spell.slots;
+  for (const k of ["attacks","resources","items","conditions"]) if (!Array.isArray(c[k])) c[k] = [];
+  if (!Array.isArray(c.spell.list)) c.spell.list = [];
+  c.saves = c.saves || {}; c.skills = c.skills || {};
+  return c;
+}
+
+/* ================= ARMAZENAMENTO ================= */
+const LS_KEY = "ficha5e:v1";
+const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+
+let store = lsGet(LS_KEY, null) || { chars:{}, cur:null };
+for (const id in store.chars) store.chars[id] = normalize(store.chars[id]);
+if (!store.cur || !store.chars[store.cur]) {
+  const ids = Object.keys(store.chars);
+  if (ids.length) store.cur = ids[0];
+  else { const c = blank(); store.chars[c.id] = c; store.cur = c.id; }
+}
+const ch = () => store.chars[store.cur];
+
+let cloud = null;          // coleção no db da conta
+let syncState = "local";   // local | sincronizando | nuvem | erro
+const pending = new Map(); // id -> timer
+const writing = new Map(); // id -> promise
+
+function persistLocal(){ lsSet(LS_KEY, store); }
+function save(c){
+  c = c || ch();
+  c.updated = Date.now();
+  persistLocal();
+  if (!cloud) return;
+  clearTimeout(pending.get(c.id));
+  pending.set(c.id, setTimeout(() => pushCloud(c.id), 700));
+}
+function pushCloud(id){
+  const c = store.chars[id]; if (!cloud || !c) return;
+  const prev = writing.get(id) || Promise.resolve();
+  const p = prev.then(() => cloud.doc(id).set(JSON.parse(JSON.stringify(c))))
+    .then(() => setSync("nuvem"))
+    .catch(e => { setSync("erro"); if (e && e.code === "unavailable") setTimeout(() => pushCloud(id), 1500 + Math.random() * 1500); });
+  writing.set(id, p.catch(() => {}));
+}
+function setSync(s){ syncState = s; const el = document.getElementById("syncNote"); if (el) el.textContent = syncText(); }
+function syncText(){
+  return { local:"Salvo neste aparelho. Para levar a outro aparelho, use Exportar e Importar backup.", sincronizando:"Sincronizando com a sua conta…", nuvem:"Salvo na sua conta: abre igual em qualquer aparelho.", erro:"Não consegui salvar na conta agora; está salvo neste aparelho e tento de novo na próxima mudança." }[syncState];
+}
+async function initCloud(){
+  const C = window.claude;
+  if (!C || typeof C.use !== "function") return;
+  try {
+    const [db, user] = await Promise.all([C.use("db"), C.use("user")]);
+    if (!db || !user) return;
+    const me = await user.id();
+    if (!me) return;
+    const col = db.collection("data/users/" + me);
+    setSync("sincronizando");
+    const snap = await Promise.race([col.get(), new Promise((_, r) => setTimeout(() => r({code:"timeout"}), 10000))]);
+    let changed = false;
+    for (const d of snap.docs) {
+      const remote = normalize(JSON.parse(JSON.stringify(d.data() || {})));
+      const local = store.chars[d.id];
+      if (!local || (remote.updated || 0) > (local.updated || 0)) { store.chars[d.id] = remote; changed = true; }
+    }
+    cloud = col;
+    const remoteIds = new Set(snap.docs.map(d => d.id));
+    for (const id in store.chars) {
+      const r = snap.docs.find(d => d.id === id);
+      if (!remoteIds.has(id) || (store.chars[id].updated || 0) > ((r && r.data().updated) || 0)) pushCloud(id);
+    }
+    // se a única ficha local era um rascunho vazio e a conta já tem fichas, some com o rascunho
+    const ids = Object.keys(store.chars);
+    if (snap.docs.length && ids.length > snap.docs.length) {
+      for (const id of ids) { const c = store.chars[id]; if (!remoteIds.has(id) && c.name === "Novo personagem" && !c.attacks.length && !c.items.length && c.level === 1) { delete store.chars[id]; writing.delete(id); } }
+    }
+    if (!store.chars[store.cur]) store.cur = Object.keys(store.chars)[0];
+    persistLocal();
+    setSync("nuvem");
+    if (changed) render();
+  } catch (e) { setSync(cloud ? "erro" : "local"); }
+}
+async function removeChar(id){
+  delete store.chars[id];
+  clearTimeout(pending.get(id));
+  if (cloud) { try { await (writing.get(id) || Promise.resolve()); await cloud.doc(id).delete(); } catch (e) {} }
+  if (!Object.keys(store.chars).length) { const c = blank(); store.chars[c.id] = c; }
+  if (!store.chars[store.cur]) store.cur = Object.keys(store.chars)[0];
+  persistLocal(); if (cloud) pushCloud(store.cur);
+}
+
+/* ================= DADOS ================= */
+let rollMode = lsGet("ficha5e:mode", "norm");
+let rollLog = lsGet("ficha5e:log", []);
+function die(n){ const a = new Uint32Array(1); const lim = Math.floor(0x100000000 / n) * n; let x; do { crypto.getRandomValues(a); x = a[0]; } while (x >= lim); return (x % n) + 1; }
+
+function logRoll(label, total, detail){
+  rollLog.unshift({ label, total, detail, t: Date.now() });
+  rollLog = rollLog.slice(0, 30); lsSet("ficha5e:log", rollLog);
+}
+// teste d20 (perícia, salvaguarda, ataque, iniciativa)
+function d20Test(label, bonus, opts = {}){
+  const c = ch();
+  const pen = c.exhaustion > 0 ? -2 * c.exhaustion : 0;
+  const mode = opts.mode || rollMode;
+  const a = die(20), b = mode === "norm" ? null : die(20);
+  const kept = mode === "adv" ? Math.max(a, b) : mode === "dis" ? Math.min(a, b) : a;
+  const total = kept + bonus + pen;
+  let detail = mode === "norm" ? `d20 ${a}` : `d20 ${a} e ${b} (${mode === "adv" ? "vantagem" : "desvantagem"}: ${kept})`;
+  detail += ` ${bonus >= 0 ? "+" : "−"} ${Math.abs(bonus)}`;
+  if (pen) detail += ` − ${-pen} exaustão`;
+  logRoll(label, total, detail);
+  showToast({ label, total, detail, crit: kept === 20, fumble: kept === 1, actions: opts.actions ? opts.actions(kept === 20) : null });
+  return { kept, total };
+}
+// expressão: "2d6+3", "1d8 + 1d6 - 1"
+function parseExpr(expr){
+  const s = String(expr || "").replace(/\s+/g, "").toLowerCase().replace(/[−–]/g, "-");
+  if (!s || !/^[+-]?(\d*d\d+|\d+)([+-](\d*d\d+|\d+))*$/.test(s)) return null;
+  const terms = []; const re = /([+-]?)(\d*)d(\d+)|([+-]?)(\d+)/g; let m;
+  while ((m = re.exec(s))) {
+    if (m[3]) terms.push({ sign: m[1] === "-" ? -1 : 1, n: Math.min(100, +(m[2] || 1)), d: Math.min(1000, +m[3]) });
+    else terms.push({ sign: m[4] === "-" ? -1 : 1, k: +m[5] });
+  }
+  return terms;
+}
+function rollExpr(label, expr, opts = {}){
+  const terms = parseExpr(expr);
+  if (!terms) { showToast({ label, total: "?", detail: `Não entendi “${expr}”. Use algo como 2d6+3.` }); return; }
+  let total = 0; const parts = [];
+  for (const t of terms) {
+    if (t.d) {
+      const n = opts.crit ? t.n * 2 : t.n; const rs = [];
+      for (let i = 0; i < n; i++) rs.push(die(t.d));
+      const sum = rs.reduce((x, y) => x + y, 0); total += t.sign * sum;
+      parts.push(`${t.sign < 0 ? "− " : parts.length ? "+ " : ""}${n}d${t.d} [${rs.join(", ")}]`);
+    } else { total += t.sign * t.k; parts.push(`${t.sign < 0 ? "−" : "+"} ${t.k}`); }
+  }
+  const detail = (opts.crit ? "Crítico: dados dobrados. " : "") + parts.join(" ");
+  logRoll(label, total, detail);
+  showToast({ label, total, detail, crit: !!opts.crit });
+  return total;
+}
+
+/* ================= INTERFACE ================= */
+const ICONS = {
+  ficha:'<path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0"/>',
+  combate:'<path d="M14.5 3.5 20.5 3l-.5 6L9 20l-4 1 1-4zM5.5 15.5l3 3M3 21l2.5-2.5"/>',
+  magias:'<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 15.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/>',
+  itens:'<path d="M6 8h12l-1 12H7zM9 8V6a3 3 0 0 1 6 0v2"/>',
+  notas:'<path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM5 17a3 3 0 0 1 3-3h11"/>',
+  dados:'<path d="M12 2.5l8.2 4.75v9.5L12 21.5l-8.2-4.75v-9.5zM12 7.5l4.3 7.5H7.7z"/>',
+  edit:'<path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/>',
+  trash:'<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>'
+};
+const ic = (n, label) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" ${label ? `role="img" aria-label="${label}"` : 'aria-hidden="true"'}>${ICONS[n]}</svg>`;
+const TABS = [["ficha","Ficha"],["combate","Combate"],["magias","Magias"],["itens","Itens"],["notas","Notas"],["dados","Dados"]];
+let tab = lsGet("ficha5e:tab", "ficha");
+if (!TABS.some(t => t[0] === tab)) tab = "ficha";
+
+const $ = s => document.querySelector(s);
+const main = $("#main");
+
+function abilMod(c, k){ return mod(c.abilities[k]); }
+function skillBonus(c, s){ const lv = c.skills[s[0]] || 0; return abilMod(c, s[2]) + (lv === 2 ? 2 : lv) * prof(c.level); }
+function saveBonus(c, k){ return abilMod(c, k) + (c.saves[k] ? prof(c.level) : 0); }
+function hitDie(c){ return c.hdOverride || (CLASSES[c.cls] || CLASSES.Outra)[0]; }
+function spellAbil(c){ return c.spell.abil || "int"; }
+
+function renderHeader(){
+  const c = ch();
+  $("#hName").textContent = c.name || "Sem nome";
+  const bits = [ (c.cls || "") + (c.subclass ? " (" + c.subclass + ")" : "") + " nível " + c.level, c.species ].filter(Boolean);
+  $("#hSub").textContent = bits.join(", ");
+  $("#hpChipV").textContent = c.hp.cur + (c.hp.temp ? "+" + c.hp.temp : "") + "/" + c.hp.max;
+  $("#hpChip").classList.toggle("low", c.hp.cur <= Math.floor(c.hp.max / 4));
+  document.querySelectorAll(".mode button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === rollMode)));
+}
+function renderTabs(){
+  $("#tabs").innerHTML = TABS.map(([k, l]) => `<button data-tab="${k}" ${tab === k ? 'aria-current="page"' : ""}>${ic(k)}<span>${l}</span></button>`).join("");
+}
+
+let toastTimer = null, toastActions = null;
+function showToast({ label, total, detail, crit, fumble, actions }){
+  const t = $("#toast");
+  toastActions = actions || null;
+  t.className = "toast show" + (crit ? " crit" : fumble ? " fumble" : "");
+  t.innerHTML = `<div class="tl"><div><div class="lab">${esc(label)}${crit ? ": 20 natural!" : fumble ? ": 1 natural" : ""}</div><div class="brk">${esc(detail)}</div></div><div class="tot">${esc(total)}</div></div>` +
+    (actions ? `<div class="acts">${actions.map((a, i) => `<button class="btn sm ${a.cls || ""}" data-act="toastAct" data-i="${i}">${esc(a.label)}</button>`).join("")}</div>` : "");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), actions ? 9000 : 5000);
+}
+
+/* ---------- aba Ficha ---------- */
+function vFicha(c){
+  const pb = prof(c.level);
+  const pp = 10 + skillBonus(c, SKILLS.find(s => s[0] === "perc"));
+  return `
+  <section class="blk">
+    <div class="stats">
+      <div class="st"><span class="v">${sg(pb)}</span><span class="k">Proficiência</span></div>
+      <button class="st" data-act="roll-init"><span class="v">${sg(abilMod(c,"dex") + (+c.initBonus || 0))}</span><span class="k">Iniciativa</span></button>
+      <div class="st"><span class="v">${pp}</span><span class="k">Percepção passiva</span></div>
+      <div class="st"><span class="v">${esc(c.speed)} m</span><span class="k">Deslocamento</span></div>
+    </div>
+  </section>
+  <section class="blk">
+    <h2>Atributos <span class="aside">toque no número para rolar</span></h2>
+    <div class="abil">${ABIL.map(([k, nm, ab]) => `
+      <div class="ab">
+        <div class="lbl">${nm}</div>
+        <button class="mod" data-act="roll-abil" data-k="${k}" aria-label="Teste de ${nm}, ${sg(abilMod(c,k))}">${sg(abilMod(c, k))}</button>
+        <label class="sr" for="ab-${k}">Valor de ${nm}</label>
+        <input id="ab-${k}" type="number" inputmode="numeric" min="1" max="30" value="${c.abilities[k]}" data-bind="abil" data-k="${k}">
+        <div class="sv">
+          <button class="${c.saves[k] ? "on" : ""}" data-act="roll-save" data-k="${k}" aria-label="Salvaguarda de ${nm}, ${sg(saveBonus(c,k))}">Salv. ${sg(saveBonus(c, k))}</button>
+          <button class="iconbtn" style="width:34px;height:34px" data-act="tog-save" data-k="${k}" aria-pressed="${!!c.saves[k]}" aria-label="Proficiente em salvaguarda de ${nm}">${c.saves[k] ? "●" : "○"}</button>
+        </div>
+      </div>`).join("")}
+    </div>
+  </section>
+  <section class="blk">
+    <h2>Perícias <span class="aside">toque no círculo: proficiente, especialista</span></h2>
+    <div class="panel" style="padding:2px 6px">
+      <ul class="skills">${SKILLS.map(s => {
+        const lv = c.skills[s[0]] || 0;
+        return `<li>
+          <button class="pip" data-act="cyc-skill" data-k="${s[0]}" data-v="${lv}" aria-label="${s[1]}: ${["sem proficiência","proficiente","especialista"][lv]}"><i></i></button>
+          <span class="nm">${s[1]}<small>${ABN[s[2]]}</small></span>
+          <button class="rollbtn" data-act="roll-skill" data-k="${s[0]}" aria-label="Rolar ${s[1]}">${sg(skillBonus(c, s))}</button>
+        </li>`; }).join("")}
+      </ul>
+    </div>
+  </section>`;
+}
+
+/* ---------- aba Combate ---------- */
+function atkBonus(c, a){
+  const m = a.abil === "none" ? 0 : a.abil === "fin" ? Math.max(abilMod(c,"str"), abilMod(c,"dex")) : a.abil === "spell" ? abilMod(c, spellAbil(c)) : abilMod(c, a.abil || "str");
+  return { hit: m + (a.prof ? prof(c.level) : 0) + (+a.bonus || 0), dmgMod: a.addMod ? m : 0 };
+}
+function dmgText(a, dm){ const base = (a.dmg || "").trim(); if (!base) return ""; return base + (dm ? (dm > 0 ? "+" : "−") + Math.abs(dm) : ""); }
+function vCombate(c){
+  const hp = c.hp, pctHp = hp.max ? Math.max(0, Math.min(100, hp.cur / hp.max * 100)) : 0;
+  const tmpPct = hp.max ? Math.min(100 - pctHp, hp.temp / hp.max * 100) : 0;
+  const low = hp.cur <= Math.floor(hp.max / 4);
+  const hdTotal = c.level, hdLeft = Math.max(0, hdTotal - c.hdUsed);
+  return `
+  <section class="blk">
+    <div class="panel hp">
+      <div class="hp-top">
+        <div><div class="muted small">Pontos de vida</div><div class="hp-big num">${hp.cur}<small> / ${hp.max}</small></div></div>
+        ${hp.temp ? `<div class="hp-temp">+${hp.temp} temporários</div>` : ""}
+      </div>
+      <div class="bar ${low ? "low" : ""}"><i style="width:${pctHp}%"></i><i class="t" style="width:${tmpPct}%"></i></div>
+      <div class="hp-ctl">
+        <label class="sr" for="hpAmt">Quantidade</label>
+        <input id="hpAmt" type="number" inputmode="numeric" min="0" placeholder="0">
+        <button class="btn red" data-act="hp-dmg">Dano</button>
+        <button class="btn green" data-act="hp-heal">Cura</button>
+        <button class="btn blue" data-act="hp-temp">Temp.</button>
+      </div>
+      <div class="mini">
+        <div><label for="hpMax">PV máximo</label><input id="hpMax" type="number" inputmode="numeric" value="${hp.max}" data-bind="hpmax"></div>
+        <div><label for="acV">CA</label><input id="acV" type="number" inputmode="numeric" value="${esc(c.ac)}" data-bind="num" data-path="ac"></div>
+        <div><label for="spV">Desloc. (m)</label><input id="spV" type="number" inputmode="decimal" step="1.5" value="${esc(c.speed)}" data-bind="num" data-path="speed"></div>
+      </div>
+    </div>
+  </section>
+
+  ${hp.cur <= 0 ? `
+  <section class="blk">
+    <h2>Testes contra a morte</h2>
+    <div class="panel ds">
+      <span>Sucessos</span><div class="dots">${[0,1,2].map(i => `<button class="dot s ${i < c.death.s ? "on" : ""}" data-act="death" data-t="s" data-i="${i}" aria-label="Sucesso ${i+1}"></button>`).join("")}</div>
+      <span>Falhas</span><div class="dots">${[0,1,2].map(i => `<button class="dot f ${i < c.death.f ? "on" : ""}" data-act="death" data-t="f" data-i="${i}" aria-label="Falha ${i+1}"></button>`).join("")}</div>
+      <span></span><button class="btn gold" data-act="roll-death">Rolar teste contra a morte</button>
+    </div>
+  </section>` : ""}
+
+  <section class="blk">
+    <h2>Ataques <button class="btn sm" data-act="atk-new">${ic("plus")} Novo</button></h2>
+    <div class="list">${c.attacks.length ? c.attacks.map(a => { const b = atkBonus(c, a); const dt = dmgText(a, b.dmgMod); return `
+      <div class="item">
+        <div class="item-h"><span class="t">${esc(a.name || "Ataque")}</span>
+          <button class="iconbtn" data-act="atk-edit" data-id="${a.id}">${ic("edit","Editar ataque")}</button></div>
+        <div class="meta">${[a.dmgType, a.mastery ? "Maestria: " + a.mastery : "", a.notes].filter(Boolean).map(esc).join(". ")}</div>
+        <div class="acts">
+          <button class="btn gold" data-act="atk-hit" data-id="${a.id}">Acerto ${sg(b.hit)}</button>
+          ${dt ? `<button class="btn" data-act="atk-dmg" data-id="${a.id}">Dano ${esc(dt)}</button>` : ""}
+        </div>
+      </div>`; }).join("") : `<div class="empty">Adicione suas armas e truques de ataque para rolar acerto e dano com um toque.</div>`}
+    </div>
+  </section>
+
+  <section class="blk">
+    <h2>Estado</h2>
+    <div class="panel">
+      <div class="row wrap" style="justify-content:space-between">
+        <button class="chip ins" data-act="tog-insp" aria-pressed="${!!c.inspiration}">Inspiração Heroica</button>
+        <div class="row"><span>Exaustão</span>
+          <div class="stepper"><button data-act="exh" data-d="-1" aria-label="Diminuir exaustão">−</button><output>${c.exhaustion}</output><button data-act="exh" data-d="1" aria-label="Aumentar exaustão">+</button></div>
+        </div>
+      </div>
+      ${c.exhaustion ? `<p class="small" style="color:var(--red);margin:8px 0 0">${c.exhaustion >= 6 ? "Exaustão 6: o personagem morre." : `−${2*c.exhaustion} em todos os testes de d20 (já aplicado nas rolagens) e −${1.5*c.exhaustion} m de deslocamento.`}</p>` : ""}
+      <h3>Condições</h3>
+      <div class="chips">${CONDITIONS.map(n => `<button class="chip" data-act="tog-cond" data-n="${esc(n)}" aria-pressed="${c.conditions.includes(n)}">${n}</button>`).join("")}</div>
+    </div>
+  </section>
+
+  <section class="blk">
+    <h2>Descanso <span class="aside">Dados de Vida: ${hdLeft}/${hdTotal} d${hitDie(c)}</span></h2>
+    <div class="row">
+      <button class="btn full" data-act="rest-short">Descanso curto</button>
+      <button class="btn full gold" data-act="rest-long">Descanso longo</button>
+    </div>
+  </section>
+
+  ${vResources(c)}`;
+}
+function vResources(c){
+  return `<section class="blk">
+    <h2>Recursos e usos <button class="btn sm" data-act="res-new">${ic("plus")} Novo</button></h2>
+    <div class="list">${c.resources.length ? c.resources.map(r => `
+      <div class="item">
+        <div class="item-h"><span class="t">${esc(r.name || "Recurso")}</span>
+          <button class="iconbtn" data-act="res-edit" data-id="${r.id}">${ic("edit","Editar recurso")}</button></div>
+        <div class="meta">${Math.max(0, r.max - r.used)} de ${r.max} disponíveis, ${{short:"volta no descanso curto",long:"volta no descanso longo",none:"não recarrega"}[r.reset] || ""}</div>
+        <div class="pips">${Array.from({length: Math.min(30, r.max)}, (_, i) => `<button class="${i < r.used ? "used" : ""}" data-act="res-pip" data-id="${r.id}" data-i="${i}" aria-label="Uso ${i+1} ${i < r.used ? "gasto" : "disponível"}"></button>`).join("")}</div>
+      </div>`).join("") : `<div class="empty">Fúria, Ki, Canalizar Divindade, Retomar o Fôlego… adicione aqui o que tem número de usos.</div>`}
+    </div>
+  </section>`;
+}
+
+/* ---------- aba Magias ---------- */
+let showAllSlots = false;
+function vMagias(c){
+  if (!c.spell.slots.some(s => s.max)) showAllSlots = true;
+  const sa = spellAbil(c), m = abilMod(c, sa), pb = prof(c.level);
+  const byLvl = {}; c.spell.list.forEach(s => (byLvl[s.lvl] = byLvl[s.lvl] || []).push(s));
+  const levels = Object.keys(byLvl).map(Number).sort((a, b) => a - b);
+  return `
+  <section class="blk">
+    <div class="stats">
+      <div class="st"><label class="k" for="spAb" style="display:block">Atributo</label>
+        <select id="spAb" data-bind="spabil" style="border:0;background:none;font:800 20px var(--body);text-align:center">${ABIL.map(([k,,ab]) => `<option value="${k}" ${k === sa ? "selected" : ""}>${ab}</option>`).join("")}</select></div>
+      <div class="st"><span class="v">${8 + pb + m}</span><span class="k">CD de magia</span></div>
+      <button class="st" data-act="roll-spatk"><span class="v">${sg(pb + m)}</span><span class="k">Ataque mágico</span></button>
+      <div class="st"><span class="v">${sg(m)}</span><span class="k">Modificador</span></div>
+    </div>
+  </section>
+  <section class="blk">
+    <h2>Espaços de magia <span class="row"><button class="btn sm ghost" data-act="slots-edit" aria-pressed="${showAllSlots}">${showAllSlots ? "Pronto" : "Ajustar"}</button><button class="btn sm ghost" data-act="slots-fill">Pela classe</button></span></h2>
+    ${`<div class="slots">${c.spell.slots.map((s, i) => (!showAllSlots && !s.max) ? "" : `
+      <div class="slot">
+        <div class="h"><span>${i+1}º</span>${showAllSlots ? `<label class="sr" for="sl${i}">Máximo do ${i+1}º círculo</label><input id="sl${i}" type="number" inputmode="numeric" min="0" max="9" value="${s.max}" data-bind="slotmax" data-i="${i}">` : `<span class="muted small">${s.max - s.used}/${s.max}</span>`}</div>
+        <div class="pips">${Array.from({length: s.max}, (_, j) => `<button class="${j < s.used ? "used" : ""}" data-act="slot-pip" data-i="${i}" data-j="${j}" aria-label="${i+1}º círculo, espaço ${j+1} ${j < s.used ? "gasto" : "disponível"}"></button>`).join("") || `<span class="muted small">nenhum</span>`}</div>
+      </div>`).join("")}</div>`}
+    <p class="muted small" style="margin:8px 0 0">${showAllSlots ? "Digite quantos espaços você tem em cada círculo, ou use “Pela classe”. " : ""}Toque num quadradinho para gastar ou recuperar um espaço. O descanso longo recupera todos${c.cls === "Bruxo" ? " (como Bruxo, o curto também)" : ""}.</p>
+  </section>
+  <section class="blk">
+    <h2>Magias <button class="btn sm" data-act="sp-new">${ic("plus")} Nova</button></h2>
+    ${levels.length ? levels.map(l => `
+      <div class="lvlh">${l === 0 ? "Truques" : l + "º círculo"}</div>
+      <div class="list">${byLvl[l].sort((a, b) => a.name.localeCompare(b.name)).map(s => `
+        <div class="item">
+          <div class="item-h">
+            ${l > 0 ? `<button class="prep" data-act="sp-prep" data-id="${s.id}" aria-pressed="${!!s.prep}">${s.prep ? "Preparada" : "Preparar"}</button>` : ""}
+            <span class="t">${esc(s.name)}${s.conc ? '<span class="tag c">C</span>' : ""}${s.rit ? '<span class="tag r">R</span>' : ""}</span>
+            <button class="iconbtn" data-act="sp-edit" data-id="${s.id}">${ic("edit","Editar magia")}</button>
+          </div>
+          ${s.notes ? `<div class="meta">${esc(s.notes)}</div>` : ""}
+          ${(s.dmg || (l > 0 && c.spell.slots[l-1] && c.spell.slots[l-1].max)) ? `<div class="acts">
+            ${l > 0 ? `<button class="btn sm gold" data-act="sp-cast" data-id="${s.id}">Conjurar (gasta ${l}º)</button>` : ""}
+            ${s.dmg ? `<button class="btn sm" data-act="sp-dmg" data-id="${s.id}">Rolar ${esc(s.dmg)}</button>` : ""}
+          </div>` : ""}
+        </div>`).join("")}</div>`).join("") : `<div class="empty">Adicione truques e magias. Marque as preparadas e use “Conjurar” para gastar o espaço certo.</div>`}
+    <p class="muted small">C = concentração, R = ritual.</p>
+  </section>`;
+}
+
+/* ---------- aba Itens ---------- */
+function vItens(c){
+  return `
+  <section class="blk">
+    <h2>Moedas</h2>
+    <div class="coins">${[["pc","PC"],["pp","PP"],["pe","PE"],["po","PO"],["pl","PL"]].map(([k, l]) => `<div><label for="co-${k}" style="display:block">${l}</label><input id="co-${k}" type="number" inputmode="numeric" min="0" value="${c.coins[k]}" data-bind="num" data-path="coins.${k}"></div>`).join("")}</div>
+    <p class="muted small" style="margin:6px 0 0">Cobre, prata, electro, ouro e platina.</p>
+  </section>
+  <section class="blk">
+    <h2>Equipamento <button class="btn sm" data-act="it-new">${ic("plus")} Novo</button></h2>
+    <div class="list">${c.items.length ? c.items.map(it => `
+      <div class="item">
+        <div class="item-h">
+          <span class="t">${esc(it.name || "Item")}</span>
+          <div class="stepper"><button data-act="it-qty" data-id="${it.id}" data-d="-1" aria-label="Diminuir quantidade">−</button><output>${it.qty}</output><button data-act="it-qty" data-id="${it.id}" data-d="1" aria-label="Aumentar quantidade">+</button></div>
+          <button class="iconbtn" data-act="it-edit" data-id="${it.id}">${ic("edit","Editar item")}</button>
+        </div>
+        ${it.notes ? `<div class="meta">${esc(it.notes)}</div>` : ""}
+      </div>`).join("") : `<div class="empty">Nenhum item ainda. Adicione armaduras, poções, kits e tudo que o personagem carrega.</div>`}
+    </div>
+  </section>`;
+}
+
+/* ---------- aba Notas ---------- */
+function vNotas(c){
+  const f = [["features","Traços e talentos","Traços da espécie, talento de origem, características de classe…"],
+             ["profs","Proficiências com armas, armaduras e ferramentas",""],
+             ["langs","Idiomas",""],
+             ["personality","Personalidade e história",""],
+             ["other","Outras anotações","Pistas, NPCs, missões…"]];
+  return f.map(([k, l, ph]) => `<section class="blk"><label class="fl" for="nt-${k}">${l}</label><textarea class="note" id="nt-${k}" data-bind="text" data-path="notes.${k}" placeholder="${esc(ph)}">${esc(c.notes[k])}</textarea></section>`).join("") +
+    `<p class="sync" id="syncNote">${syncText()}</p>`;
+}
+
+/* ---------- aba Dados ---------- */
+function vDados(){
+  return `
+  <section class="blk">
+    <h2>Rolar dados</h2>
+    <div class="dice">${[4,6,8,10,12,20,100].map(n => `<button class="die" data-act="die" data-n="${n}">d${n}</button>`).join("")}
+      <button class="die" data-act="die-custom">Outro</button></div>
+    <div class="row" style="margin-top:10px">
+      <label class="sr" for="exprIn">Expressão de dados</label>
+      <input id="exprIn" class="grow" placeholder="Ex.: 2d6+3" style="border:1.5px solid var(--line);border-radius:12px;background:var(--surface);padding:10px 12px;min-height:48px;font-size:18px">
+      <button class="btn gold" data-act="die-expr">Rolar</button>
+    </div>
+  </section>
+  <section class="blk">
+    <h2>Últimas rolagens ${rollLog.length ? `<button class="btn sm ghost" data-act="log-clear">Limpar</button>` : ""}</h2>
+    ${rollLog.length ? `<ul class="log">${rollLog.map(r => `<li><div><div>${esc(r.label)}</div><div class="muted small">${esc(r.detail)}</div></div><b>${esc(r.total)}</b></li>`).join("")}</ul>` : `<div class="empty">As rolagens que você fizer aparecem aqui.</div>`}
+  </section>`;
+}
+
+function render(){
+  const c = ch();
+  renderHeader(); renderTabs();
+  const v = { ficha: vFicha, combate: vCombate, magias: vMagias, itens: vItens, notas: vNotas, dados: vDados }[tab];
+  main.innerHTML = v(c);
+}
+
+/* ================= DIÁLOGOS ================= */
+const dlg = $("#dlg"), dlgBody = $("#dlgBody");
+let dlgSubmit = null;
+function openDlg(html, onSubmit){
+  dlgBody.innerHTML = html; dlgSubmit = onSubmit || null;
+  if (!dlg.open) dlg.showModal();
+  const f = dlgBody.querySelector("input,select,textarea"); if (f && !matchMedia("(pointer:coarse)").matches) f.focus();
+}
+function closeDlg(){ if (dlg.open) dlg.close(); dlgSubmit = null; }
+function askDel(){
+  const b = dlgBody.querySelector('[data-act="dlg-del"]'); if (!b) return;
+  if (b.dataset.armed) { submitDlg("del"); return; }
+  b.dataset.armed = "1"; b.textContent = "Toque de novo para excluir";
+  setTimeout(() => { if (b.isConnected) { delete b.dataset.armed; b.textContent = "Excluir"; } }, 4000);
+}
+dlg.addEventListener("click", e => { if (e.target === dlg) closeDlg(); });
+dlgBody.addEventListener("submit", e => { e.preventDefault(); submitDlg("ok"); });
+function dlgError(msg){
+  let el = dlgBody.querySelector(".err");
+  if (!el) { el = document.createElement("p"); el.className = "err"; el.setAttribute("role", "alert"); const acts = dlgBody.querySelector(".acts"); (acts ? acts.parentNode : dlgBody).insertBefore(el, acts || null); }
+  el.textContent = msg;
+}
+function submitDlg(kind){
+  if (!dlgSubmit) return;
+  const form = dlgBody.querySelector("form"); if (!form) return;
+  const o = {};
+  for (const el of form.querySelectorAll("[name]")) o[el.name] = el.type === "checkbox" ? el.checked : el.value;
+  if (kind !== "del") {
+    for (const el of form.querySelectorAll("[name]")) {
+      const lab = (el.closest("label") && el.closest("label").querySelector("span") || {}).textContent || "Campo";
+      if (el.required && !String(el.value).trim()) { dlgError(`Preencha: ${lab}.`); el.focus(); return; }
+      if (el.type === "number" && String(el.value).trim() !== "") {
+        const n = Number(String(el.value).replace(",", "."));
+        if (isNaN(n)) { dlgError(`${lab}: use só números.`); el.focus(); return; }
+        if (el.min !== "" && n < +el.min) { dlgError(`${lab}: o mínimo é ${el.min}.`); el.focus(); return; }
+        if (el.max !== "" && n > +el.max) { dlgError(`${lab}: o máximo é ${el.max}.`); el.focus(); return; }
+        o[el.name] = String(n);
+      }
+    }
+  }
+  dlgSubmit(o, kind);
+}
+const fld = (label, inner) => `<label class="fld"><span>${label}</span>${inner}</label>`;
+const inp = (name, val, attrs = "") => `<input name="${name}" value="${esc(val)}" ${attrs}>`;
+const chk = (name, on, label) => `<label class="chk"><input type="checkbox" name="${name}" ${on ? "checked" : ""}> ${label}</label>`;
+const sel = (name, opts, cur) => `<select name="${name}">${opts.map(o => { const [v, l] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(v)}" ${String(v) === String(cur) ? "selected" : ""}>${esc(l || "—")}</option>`; }).join("")}</select>`;
+const dlgActs = (del) => `<div class="acts">${del ? `<button type="button" class="btn red" data-act="dlg-del" style="margin-right:auto">Excluir</button>` : ""}<button type="button" class="btn ghost" data-act="dlg-close">Cancelar</button><button type="button" class="btn gold" data-act="dlg-save" value="ok">Salvar</button></div>`;
+function askConfirm(title, msg, okLabel, fn, danger){
+  openDlg(`<h2>${esc(title)}</h2><p>${esc(msg)}</p><div class="acts"><button type="button" class="btn ghost" data-act="dlg-close">Cancelar</button><button type="button" class="btn ${danger ? "red" : "gold"}" data-act="dlg-confirm">${esc(okLabel)}</button></div>`);
+  dlgConfirm = fn;
+}
+let dlgConfirm = null;
+
+function dlgChars(){
+  const ids = Object.keys(store.chars).sort((a, b) => store.chars[a].name.localeCompare(store.chars[b].name));
+  openDlg(`<h2>Personagens</h2>
+    <ul class="charlist">${ids.map(id => { const c = store.chars[id]; return `<li><button class="pick" data-act="char-pick" data-id="${id}" ${id === store.cur ? 'aria-current="true"' : ""}><b>${esc(c.name)}</b><div class="muted small">${esc(c.cls)} nível ${c.level}${c.species ? ", " + esc(c.species) : ""}</div></button></li>`; }).join("")}</ul>
+    <div class="list">
+      <button class="btn full gold" data-act="char-edit">Editar dados de ${esc(ch().name)}</button>
+      <button class="btn full" data-act="char-new">${ic("plus")} Novo personagem</button>
+      <div class="row"><button class="btn full" data-act="backup-out">Exportar backup</button><button class="btn full" data-act="backup-in">Importar backup</button></div>
+      <button class="btn full red" data-act="char-del">Excluir ${esc(ch().name)}</button>
+      <button class="btn full ghost" data-act="dlg-close">Fechar</button>
+    </div>
+    <p class="sync" id="syncNote">${syncText()}</p>`);
+}
+function dlgCharEdit(){
+  const c = ch();
+  openDlg(`<form><h2>Dados do personagem</h2>
+    ${fld("Nome", inp("name", c.name, 'required maxlength="60" autocomplete="off"'))}
+    <div class="grid2">
+      ${fld("Classe", sel("cls", Object.keys(CLASSES), c.cls))}
+      ${fld("Nível", inp("level", c.level, 'type="number" inputmode="numeric" min="1" max="20" required'))}
+      ${fld("Subclasse", inp("subclass", c.subclass, 'maxlength="40"'))}
+      ${fld("Espécie", inp("species", c.species, 'maxlength="40"'))}
+      ${fld("Antecedente", inp("background", c.background, 'maxlength="40"'))}
+      ${fld("Tendência", inp("alignment", c.alignment, 'maxlength="30"'))}
+      ${fld("Tamanho", sel("size", ["Minúsculo","Pequeno","Médio","Grande"], c.size))}
+      ${fld("Bônus extra de iniciativa", inp("initBonus", c.initBonus, 'type="number" inputmode="numeric"'))}
+    </div>
+    ${fld("Dado de Vida (deixe 0 para usar o da classe)", inp("hdOverride", c.hdOverride, 'type="number" inputmode="numeric" min="0" max="12"'))}
+    <p class="muted small">Ao trocar a classe, as salvaguardas e o atributo de magia são ajustados para os da classe nova.</p>
+    ${dlgActs(false)}</form>`, o => {
+      const newCls = o.cls !== c.cls;
+      c.name = o.name.trim() || "Sem nome"; c.cls = o.cls; c.level = clampInt(o.level, 1, 20);
+      c.subclass = o.subclass.trim(); c.species = o.species.trim(); c.background = o.background.trim(); c.alignment = o.alignment.trim();
+      c.size = o.size; c.initBonus = parseInt(o.initBonus, 10) || 0; c.hdOverride = clampInt(o.hdOverride, 0, 12);
+      if (newCls) { const k = CLASSES[c.cls]; if (k[1].length) c.saves = Object.fromEntries(k[1].map(s => [s, true])); if (k[3]) c.spell.abil = k[3]; }
+      c.hdUsed = Math.min(c.hdUsed, c.level);
+      save(); closeDlg(); render();
+    });
+}
+function dlgAttack(a){
+  const isNew = !a; a = a || { id: uid(), name:"", abil:"str", prof:true, bonus:0, dmg:"1d8", addMod:true, dmgType:"", mastery:"", notes:"" };
+  const c = ch();
+  openDlg(`<form><h2>${isNew ? "Novo ataque" : "Editar ataque"}</h2>
+    ${fld("Nome", inp("name", a.name, 'required maxlength="50" placeholder="Espada longa"'))}
+    <div class="grid2">
+      ${fld("Atributo", sel("abil", [["str","Força"],["dex","Destreza"],["fin","Acuidade (maior entre FOR e DES)"],["spell","Atributo de magia"],["none","Nenhum"]], a.abil))}
+      ${fld("Bônus extra (arma +1…)", inp("bonus", a.bonus, 'type="number" inputmode="numeric"'))}
+      ${fld("Dano", inp("dmg", a.dmg, 'maxlength="30" placeholder="1d8"'))}
+      ${fld("Tipo de dano", inp("dmgType", a.dmgType, 'maxlength="30" placeholder="Cortante"'))}
+    </div>
+    ${chk("prof", a.prof, "Proficiente (soma o bônus de proficiência)")}
+    ${chk("addMod", a.addMod, "Somar o modificador ao dano")}
+    ${fld("Maestria em arma", sel("mastery", MASTERIES, a.mastery))}
+    ${fld("Observações", inp("notes", a.notes, 'maxlength="120" placeholder="Alcance, propriedades…"'))}
+    ${dlgActs(!isNew)}</form>`, (o, btn) => {
+      if (btn === "del") { c.attacks = c.attacks.filter(x => x.id !== a.id); }
+      else {
+        if (o.dmg.trim() && !parseExpr(o.dmg)) { dlgError("Dano inválido. Use algo como 1d8, 2d6 ou 1d10+1d6."); return; }
+        Object.assign(a, { name:o.name.trim(), abil:o.abil, bonus:parseInt(o.bonus,10)||0, dmg:o.dmg.trim(), dmgType:o.dmgType.trim(), prof:o.prof, addMod:o.addMod, mastery:o.mastery, notes:o.notes.trim() });
+        if (isNew) c.attacks.push(a);
+      }
+      save(); closeDlg(); render();
+    });
+}
+function dlgResource(r){
+  const isNew = !r; r = r || { id: uid(), name:"", max:2, used:0, reset:"long" };
+  const c = ch();
+  openDlg(`<form><h2>${isNew ? "Novo recurso" : "Editar recurso"}</h2>
+    ${fld("Nome", inp("name", r.name, 'required maxlength="50" placeholder="Fúria"'))}
+    <div class="grid2">
+      ${fld("Usos máximos", inp("max", r.max, 'type="number" inputmode="numeric" min="1" max="30" required'))}
+      ${fld("Recarrega em", sel("reset", [["short","Descanso curto"],["long","Descanso longo"],["none","Não recarrega"]], r.reset))}
+    </div>
+    ${dlgActs(!isNew)}</form>`, (o, btn) => {
+      if (btn === "del") c.resources = c.resources.filter(x => x.id !== r.id);
+      else { Object.assign(r, { name:o.name.trim(), max:clampInt(o.max,1,30), reset:o.reset }); r.used = Math.min(r.used, r.max); if (isNew) c.resources.push(r); }
+      save(); closeDlg(); render();
+    });
+}
+function dlgSpell(s){
+  const isNew = !s; s = s || { id: uid(), name:"", lvl:1, prep:true, conc:false, rit:false, dmg:"", notes:"" };
+  const c = ch();
+  openDlg(`<form><h2>${isNew ? "Nova magia" : "Editar magia"}</h2>
+    ${fld("Nome", inp("name", s.name, 'required maxlength="50" placeholder="Bola de Fogo"'))}
+    <div class="grid2">
+      ${fld("Círculo", sel("lvl", [[0,"Truque"],...[1,2,3,4,5,6,7,8,9].map(n => [n, n + "º círculo"])], s.lvl))}
+      ${fld("Dano ou cura (opcional)", inp("dmg", s.dmg, 'maxlength="30" placeholder="8d6"'))}
+    </div>
+    ${chk("prep", s.prep, "Preparada")}
+    ${chk("conc", s.conc, "Concentração")}
+    ${chk("rit", s.rit, "Ritual")}
+    ${fld("Resumo", `<textarea name="notes" rows="3" maxlength="400" placeholder="Alcance, duração, efeito…">${esc(s.notes)}</textarea>`)}
+    ${dlgActs(!isNew)}</form>`, (o, btn) => {
+      if (btn === "del") c.spell.list = c.spell.list.filter(x => x.id !== s.id);
+      else {
+        if (o.dmg.trim() && !parseExpr(o.dmg)) { dlgError("Dano inválido. Use algo como 8d6 ou 1d8+3."); return; }
+        Object.assign(s, { name:o.name.trim(), lvl:clampInt(o.lvl,0,9), prep:o.prep, conc:o.conc, rit:o.rit, dmg:o.dmg.trim(), notes:o.notes.trim() });
+        if (isNew) c.spell.list.push(s);
+      }
+      save(); closeDlg(); render();
+    });
+}
+function dlgItem(it){
+  const isNew = !it; it = it || { id: uid(), name:"", qty:1, notes:"" };
+  const c = ch();
+  openDlg(`<form><h2>${isNew ? "Novo item" : "Editar item"}</h2>
+    ${fld("Nome", inp("name", it.name, 'required maxlength="60" placeholder="Poção de Cura"'))}
+    ${fld("Quantidade", inp("qty", it.qty, 'type="number" inputmode="numeric" min="0" max="9999"'))}
+    ${fld("Observações", `<textarea name="notes" rows="3" maxlength="300">${esc(it.notes)}</textarea>`)}
+    ${dlgActs(!isNew)}</form>`, (o, btn) => {
+      if (btn === "del") c.items = c.items.filter(x => x.id !== it.id);
+      else { Object.assign(it, { name:o.name.trim(), qty:clampInt(o.qty,0,9999), notes:o.notes.trim() }); if (isNew) c.items.push(it); }
+      save(); closeDlg(); render();
+    });
+}
+function dlgShortRest(){
+  const c = ch(), left = Math.max(0, c.level - c.hdUsed), cm = abilMod(c, "con");
+  openDlg(`<h2>Descanso curto</h2>
+    <p>PV ${c.hp.cur}/${c.hp.max}. Dados de Vida disponíveis: <b>${left} d${hitDie(c)}</b> (cada um cura o resultado ${sg(cm)}).</p>
+    <div class="list">
+      <button class="btn full green" data-act="sr-spend" ${left && c.hp.cur < c.hp.max ? "" : "disabled"}>Gastar 1 Dado de Vida</button>
+      <button class="btn full gold" data-act="sr-done">Concluir descanso curto</button>
+      <button class="btn full ghost" data-act="dlg-close">Cancelar</button>
+    </div>
+    <p class="muted small">Ao concluir, os recursos de descanso curto voltam${c.cls === "Bruxo" ? ", junto com os espaços de magia de Pacto" : ""}.</p>`);
+}
+async function exportBackup(){
+  const json = JSON.stringify({ app:"ficha5e", v:1, exported:new Date().toISOString(), chars:store.chars }, null, 1);
+  let dl = null; try { dl = window.claude && window.claude.use ? await window.claude.use("downloads") : null; } catch (e) {}
+  if (dl) { try { await dl.save({ filename: "fichas-dnd-backup.json", data: json }); showToast({ label:"Backup", total:"✓", detail:"Arquivo salvo." }); return; } catch (e) { if (e && e.code === "declined") return; } }
+  if (!window.claude) {
+    const url = URL.createObjectURL(new Blob([json], { type:"application/json" }));
+    const a = document.createElement("a"); a.href = url; a.download = "fichas-dnd-backup.json";
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000);
+    showToast({ label:"Backup", total:"✓", detail:"Arquivo fichas-dnd-backup.json baixado." }); return;
+  }
+  openDlg(`<h2>Backup</h2><p class="small">Copie o texto abaixo e guarde num lugar seguro. Para restaurar, use “Importar backup” com um arquivo .json com esse conteúdo.</p>
+    <textarea class="note" readonly style="min-height:220px;font-size:13px">${esc(json)}</textarea>
+    <div class="acts"><button class="btn gold" data-act="dlg-close">Fechar</button></div>`);
+}
+function importBackup(text){
+  let data; try { data = JSON.parse(text); } catch (e) { showToast({ label:"Importar backup", total:"✗", detail:"Esse arquivo não é um backup válido.", fumble:true }); return; }
+  let list = data && data.chars ? Object.values(data.chars) : Array.isArray(data) ? data : data && data.abilities ? [data] : [];
+  if (!list.length) { showToast({ label:"Importar backup", total:"✗", detail:"Não encontrei personagens nesse arquivo.", fumble:true }); return; }
+  let n = 0;
+  for (const raw of list) { const c = normalize(raw); if (!c.id) c.id = uid(); const ex = store.chars[c.id]; if (!ex || (c.updated || 0) >= (ex.updated || 0)) { store.chars[c.id] = c; save(c); n++; } }
+  store.cur = normalize(list[0]).id || store.cur; persistLocal(); closeDlg(); render();
+  showToast({ label:"Backup importado", total:n, detail: n === 1 ? "1 personagem restaurado." : n + " personagens restaurados." });
+}
+
+/* ================= AÇÕES ================= */
+function rerender(){
+  const id = document.activeElement && document.activeElement.id;
+  const y = window.scrollY; render(); window.scrollTo(0, y);
+  if (id && !dlg.open) { const el = document.getElementById(id); if (el) el.focus({ preventScroll: true }); }
+}
+const findBy = (arr, id) => arr.find(x => x.id === id);
+
+function applyHp(kind){
+  const c = ch(), el = $("#hpAmt"), n = clampInt(el && el.value, 0, 9999);
+  if (!n) { if (el) el.focus(); return; }
+  if (kind === "dmg") {
+    let left = n; const absorbed = Math.min(c.hp.temp, left); c.hp.temp -= absorbed; left -= absorbed;
+    const wasZero = c.hp.cur === 0; c.hp.cur = Math.max(0, c.hp.cur - left);
+    if (wasZero && left > 0) c.death.f = Math.min(3, c.death.f + 1);
+    showToast({ label:"Dano recebido", total:"−" + n, detail: absorbed ? `${absorbed} absorvido pelos PV temporários.` : `PV agora: ${c.hp.cur}/${c.hp.max}.`, fumble: c.hp.cur === 0 });
+  } else if (kind === "heal") {
+    if (c.hp.cur === 0) c.death = { s:0, f:0 };
+    c.hp.cur = Math.min(c.hp.max, c.hp.cur + n);
+    showToast({ label:"Cura", total:"+" + n, detail:`PV agora: ${c.hp.cur}/${c.hp.max}.` });
+  } else {
+    c.hp.temp = Math.max(c.hp.temp, n);
+    showToast({ label:"PV temporários", total:c.hp.temp, detail:"PV temporários não se somam: fica o maior valor." });
+  }
+  save(); rerender(); const e2 = $("#hpAmt"); if (e2) e2.value = "";
+}
+function rollDeath(){
+  const c = ch(); const { kept } = d20Test("Teste contra a morte", 0, { mode:"norm" });
+  if (kept === 20) { c.hp.cur = 1; c.death = { s:0, f:0 }; }
+  else if (kept === 1) c.death.f = Math.min(3, c.death.f + 2);
+  else if (kept >= 10) c.death.s = Math.min(3, c.death.s + 1);
+  else c.death.f = Math.min(3, c.death.f + 1);
+  if (c.death.s >= 3) setTimeout(() => showToast({ label:"Estabilizado", total:"✓", detail:"Três sucessos: o personagem fica estável com 0 PV." }), 1800);
+  if (c.death.f >= 3) setTimeout(() => showToast({ label:"Três falhas", total:"✗", detail:"O personagem morre.", fumble:true }), 1800);
+  save(); rerender();
+}
+function longRest(){
+  askConfirm("Descanso longo", "Recupera todos os PV, Dados de Vida, espaços de magia e recursos, e reduz 1 nível de exaustão.", "Descansar", doLongRest);
+}
+function doLongRest(){
+  const c = ch();
+  c.hp.cur = c.hp.max; c.hp.temp = 0; c.hdUsed = 0; c.death = { s:0, f:0 };
+  c.spell.slots.forEach(s => s.used = 0);
+  c.resources.forEach(r => { if (r.reset !== "none") r.used = 0; });
+  c.exhaustion = Math.max(0, c.exhaustion - 1);
+  save(); rerender(); showToast({ label:"Descanso longo", total:"✓", detail:"Tudo recuperado. Bom dia, aventureiro." });
+}
+function fillSlots(){
+  const c = ch(), type = (CLASSES[c.cls] || CLASSES.Outra)[2];
+  if (!type) { showToast({ label:"Espaços de magia", total:"✗", detail:`${c.cls} não tem espaços pela tabela da classe. Para magia de subclasse ou multiclasse, use “Ajustar” e preencha à mão.`, fumble:true }); return; }
+  if (c.spell.slots.some(s => s.max)) { askConfirm("Espaços de magia", `Substituir os espaços atuais pelos da tabela de ${c.cls} nível ${c.level}?`, "Substituir", () => doFillSlots(type)); return; }
+  doFillSlots(type);
+}
+function doFillSlots(type){
+  const c = ch();
+  const arr = type === "full" ? FULL[c.level] : type === "half" ? HALF[c.level] : pactSlots(c.level);
+  c.spell.slots = Array.from({ length: 9 }, (_, i) => ({ max: arr[i] || 0, used: 0 }));
+  showAllSlots = false;
+  save(); rerender();
+}
+
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-act],[data-tab],.mode button,#whoBtn,#hpChip"); if (!b) return;
+  const c = ch(), d = b.dataset;
+  if (b.dataset.tab) { tab = b.dataset.tab; lsSet("ficha5e:tab", tab); render(); window.scrollTo(0, 0); return; }
+  if (b.matches(".mode button")) { rollMode = d.mode; lsSet("ficha5e:mode", rollMode); renderHeader(); return; }
+  if (b.id === "whoBtn") { dlgChars(); return; }
+  if (b.id === "hpChip") { tab = "combate"; lsSet("ficha5e:tab", tab); render(); window.scrollTo(0, 0); return; }
+  switch (d.act) {
+    case "toastAct": { const a = toastActions && toastActions[+d.i]; if (a) a.fn(); break; }
+    case "dlg-close": closeDlg(); break;
+    case "dlg-save": submitDlg("ok"); break;
+    case "dlg-del": askDel(); break;
+    case "dlg-confirm": { const fn = dlgConfirm; dlgConfirm = null; closeDlg(); if (fn) fn(); break; }
+    case "roll-abil": d20Test("Teste de " + ABIL.find(a => a[0] === d.k)[1], abilMod(c, d.k)); break;
+    case "roll-save": d20Test("Salvaguarda de " + ABIL.find(a => a[0] === d.k)[1], saveBonus(c, d.k)); break;
+    case "roll-skill": { const s = SKILLS.find(x => x[0] === d.k); d20Test(s[1], skillBonus(c, s)); break; }
+    case "roll-init": d20Test("Iniciativa", abilMod(c, "dex") + (+c.initBonus || 0)); break;
+    case "roll-spatk": d20Test("Ataque mágico", prof(c.level) + abilMod(c, spellAbil(c))); break;
+    case "tog-save": c.saves[d.k] = !c.saves[d.k]; save(); rerender(); break;
+    case "cyc-skill": c.skills[d.k] = ((c.skills[d.k] || 0) + 1) % 3; save(); rerender(); break;
+    case "hp-dmg": applyHp("dmg"); break;
+    case "hp-heal": applyHp("heal"); break;
+    case "hp-temp": applyHp("temp"); break;
+    case "death": { const i = +d.i, t = d.t; c.death[t] = c.death[t] > i ? i : i + 1; save(); rerender(); break; }
+    case "roll-death": rollDeath(); break;
+    case "tog-insp": c.inspiration = !c.inspiration; save(); rerender(); break;
+    case "exh": c.exhaustion = Math.max(0, Math.min(6, c.exhaustion + +d.d)); save(); rerender(); break;
+    case "tog-cond": { const n = d.n; c.conditions = c.conditions.includes(n) ? c.conditions.filter(x => x !== n) : [...c.conditions, n]; save(); rerender(); break; }
+    case "atk-new": dlgAttack(); break;
+    case "atk-edit": dlgAttack(findBy(c.attacks, d.id)); break;
+    case "atk-hit": {
+      const a = findBy(c.attacks, d.id); if (!a) break; const bb = atkBonus(c, a); const dt = dmgText(a, bb.dmgMod);
+      d20Test(a.name || "Ataque", bb.hit, { actions: crit => dt ? [{ label: crit ? "Rolar dano crítico" : "Rolar dano", cls: crit ? "green" : "", fn: () => rollExpr((a.name || "Ataque") + ": dano", dt, { crit }) }] : null });
+      break; }
+    case "atk-dmg": { const a = findBy(c.attacks, d.id); if (a) rollExpr((a.name || "Ataque") + ": dano", dmgText(a, atkBonus(c, a).dmgMod)); break; }
+    case "res-new": dlgResource(); break;
+    case "res-edit": dlgResource(findBy(c.resources, d.id)); break;
+    case "res-pip": { const r = findBy(c.resources, d.id); if (!r) break; const i = +d.i; r.used = r.used > i ? i : i + 1; save(); rerender(); break; }
+    case "rest-short": dlgShortRest(); break;
+    case "sr-spend": {
+      if (c.hdUsed >= c.level) break;
+      const r = die(hitDie(c)), cm = abilMod(c, "con"), heal = Math.max(1, r + cm);
+      c.hdUsed++; c.hp.cur = Math.min(c.hp.max, c.hp.cur + heal); if (c.hp.cur > 0) c.death = { s:0, f:0 };
+      logRoll("Dado de Vida", heal, `d${hitDie(c)} ${r} ${sg(cm)} CON`);
+      save(); render(); dlgShortRest();
+      showToast({ label:"Dado de Vida", total:"+" + heal, detail:`d${hitDie(c)} ${r} ${cm >= 0 ? "+" : "−"} ${Math.abs(cm)}. PV agora: ${c.hp.cur}/${c.hp.max}.` });
+      break; }
+    case "sr-done":
+      c.resources.forEach(r => { if (r.reset === "short") r.used = 0; });
+      if (c.cls === "Bruxo") c.spell.slots.forEach(s => s.used = 0);
+      save(); closeDlg(); rerender(); showToast({ label:"Descanso curto", total:"✓", detail:"Recursos de descanso curto recuperados." }); break;
+    case "rest-long": longRest(); break;
+    case "slots-fill": fillSlots(); break;
+    case "slots-edit": showAllSlots = !showAllSlots; rerender(); break;
+    case "slot-pip": { const s = c.spell.slots[+d.i], j = +d.j; s.used = s.used > j ? j : j + 1; save(); rerender(); break; }
+    case "sp-new": dlgSpell(); break;
+    case "sp-edit": dlgSpell(findBy(c.spell.list, d.id)); break;
+    case "sp-prep": { const s = findBy(c.spell.list, d.id); if (s) { s.prep = !s.prep; save(); rerender(); } break; }
+    case "sp-cast": {
+      const s = findBy(c.spell.list, d.id); if (!s) break;
+      let i = s.lvl - 1; while (i < 9 && !(c.spell.slots[i].max - c.spell.slots[i].used > 0)) i++;
+      if (i >= 9) { showToast({ label:s.name, total:"✗", detail:`Sem espaços de ${s.lvl}º círculo ou maior disponíveis.`, fumble:true }); break; }
+      c.spell.slots[i].used++; save(); rerender();
+      showToast({ label:s.name, total:(i+1) + "º", detail: i + 1 > s.lvl ? `Conjurada usando um espaço de ${i+1}º círculo (não havia de ${s.lvl}º).` : `Espaço de ${i+1}º círculo gasto.`,
+        actions: s.dmg ? [{ label:"Rolar " + s.dmg, fn: () => rollExpr(s.name, s.dmg) }] : null });
+      break; }
+    case "sp-dmg": { const s = findBy(c.spell.list, d.id); if (s) rollExpr(s.name, s.dmg); break; }
+    case "it-new": dlgItem(); break;
+    case "it-edit": dlgItem(findBy(c.items, d.id)); break;
+    case "it-qty": { const it = findBy(c.items, d.id); if (it) { it.qty = Math.max(0, it.qty + +d.d); save(); rerender(); } break; }
+    case "die": rollExpr("d" + d.n, "1d" + d.n); if (tab === "dados") rerender(); break;
+    case "die-custom": { const el = $("#exprIn"); if (el) el.focus(); break; }
+    case "die-expr": { const el = $("#exprIn"); if (el && el.value.trim()) { rollExpr(el.value.trim(), el.value.trim()); const v = el.value; rerender(); const e2 = $("#exprIn"); if (e2) e2.value = v; } break; }
+    case "log-clear": rollLog = []; lsSet("ficha5e:log", rollLog); rerender(); break;
+    case "char-pick": store.cur = d.id; persistLocal(); closeDlg(); render(); break;
+    case "char-edit": dlgCharEdit(); break;
+    case "char-new": { const n = blank(); store.chars[n.id] = n; store.cur = n.id; save(n); render(); dlgCharEdit(); break; }
+    case "char-del": askConfirm("Excluir personagem", `Excluir ${c.name}? Isso não pode ser desfeito.`, "Excluir", () => removeChar(c.id).then(render), true); break;
+    case "backup-out": exportBackup(); break;
+    case "backup-in": $("#importFile").click(); break;
+  }
+});
+$("#importFile").addEventListener("change", e => { const f = e.target.files && e.target.files[0]; if (!f) return; f.text().then(importBackup); e.target.value = ""; });
+
+// campos editáveis
+function setPath(obj, path, val){ const ks = path.split("."); let o = obj; while (ks.length > 1) o = o[ks.shift()]; o[ks[0]] = val; }
+document.addEventListener("change", e => {
+  const el = e.target, b = el.dataset && el.dataset.bind; if (!b) return;
+  const c = ch();
+  if (b === "abil") c.abilities[el.dataset.k] = clampInt(el.value, 1, 30);
+  else if (b === "num") setPath(c, el.dataset.path, Math.max(0, parseFloat(String(el.value).replace(",", ".")) || 0));
+  else if (b === "hpmax") { const full = c.hp.cur >= c.hp.max; c.hp.max = clampInt(el.value, 1, 9999); c.hp.cur = full ? c.hp.max : Math.min(c.hp.cur, c.hp.max); }
+  else if (b === "slotmax") { const s = c.spell.slots[+el.dataset.i]; s.max = clampInt(el.value, 0, 9); s.used = Math.min(s.used, s.max); }
+  else if (b === "spabil") c.spell.abil = el.value;
+  else if (b === "text") return;
+  save(); rerender();
+});
+let textTimer = null;
+document.addEventListener("input", e => {
+  const el = e.target; if (!el.dataset || el.dataset.bind !== "text") return;
+  setPath(ch(), el.dataset.path, el.value.slice(0, 20000));
+  clearTimeout(textTimer); textTimer = setTimeout(() => save(), 600);
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Enter" && dlg.open && e.target.matches("dialog input") && e.target.type !== "checkbox") { e.preventDefault(); submitDlg("ok"); return; }
+  if (e.key === "Enter" && e.target.id === "hpAmt") { e.preventDefault(); applyHp("dmg"); }
+  if (e.key === "Enter" && e.target.id === "exprIn") { e.preventDefault(); const v = e.target.value.trim(); if (v) { rollExpr(v, v); rerender(); const e2 = $("#exprIn"); if (e2) e2.value = v; } }
+});
+window.addEventListener("pagehide", () => { persistLocal(); });
+
+render();
+initCloud();
+</script>
+</body>
+</html>
