@@ -44,7 +44,11 @@ button{cursor:pointer}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
 .top{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--surface);border-bottom:1px solid var(--line);padding:10px 14px 8px}
 .top-row{display:flex;align-items:center;gap:10px;max-width:760px;margin:0 auto}
-.who{flex:1;min-width:0;background:none;border:0;padding:4px 0;text-align:left;min-height:44px}
+.who{flex:1;min-width:0;background:none;border:0;padding:4px 0;text-align:left;min-height:44px;display:flex;align-items:center;gap:10px}
+.who .txt{min-width:0;flex:1}
+.avatar{width:46px;height:46px;flex:none;border-radius:50%;overflow:hidden;background:var(--gold-bg);color:var(--gold);display:grid;place-items:center;font:700 18px var(--head);border:2px solid var(--gold)}
+.avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.avatar.big{width:96px;height:96px;font-size:34px}
 .who .nm{display:block;font:700 23px/1.1 var(--head);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .who .sub{display:block;color:var(--mute);font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hpchip{border:1.5px solid var(--line);background:var(--surface2);border-radius:12px;padding:4px 10px;min-height:44px;min-width:76px;text-align:center;line-height:1.05}
@@ -241,7 +245,7 @@ details.feat .t{flex:0 1 auto}
 <body>
 <header class="top">
   <div class="top-row">
-    <button class="who" id="whoBtn" aria-label="Trocar ou editar personagem"><span class="nm" id="hName"></span><span class="sub" id="hSub"></span></button>
+    <button class="who" id="whoBtn" aria-label="Trocar ou editar personagem"><span class="avatar" id="hAvatar" aria-hidden="true"></span><span class="txt"><span class="nm" id="hName"></span><span class="sub" id="hSub"></span></span></button>
     <button class="hpchip" id="hpChip" aria-label="Pontos de vida"><b id="hpChipV"></b><small>PV</small></button>
   </div>
   <div class="mode" role="group" aria-label="Modo de rolagem d20">
@@ -255,6 +259,7 @@ details.feat .t{flex:0 1 auto}
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <dialog id="dlg"><div class="dlg" id="dlgBody"></div></dialog>
 <input type="file" id="importFile" accept="application/json,.json" class="sr" tabindex="-1" aria-hidden="true">
+<input type="file" id="photoFile" accept="image/*" class="sr" tabindex="-1" aria-hidden="true">
 <script>
 "use strict";
 /* ================= REGRAS (D&D 2024) ================= */
@@ -299,7 +304,7 @@ function blank(){
     spell:{abil:"int", slots:Array.from({length:9},()=>({max:0,used:0})), list:[]},
     items:[], coins:{pc:0,pp:0,pe:0,po:0,pl:0},
     notes:{features:"",profs:"",langs:"",personality:"",other:""},
-    feats:[], featKeys:[], autoSkills:[], autoProfs:"", hpAuto:true, hiddenFeats:[], lineage:"", acAuto:true, acBonus:0, slotsAuto:true,
+    feats:[], featKeys:[], autoSkills:[], autoProfs:"", hpAuto:true, hiddenFeats:[], lineage:"", acAuto:true, acBonus:0, slotsAuto:true, portrait:"",
     updated:Date.now()
   };
 }
@@ -315,6 +320,7 @@ function normalize(c){
   for (const k of ["attacks","resources","items","conditions","feats","featKeys","autoSkills","hiddenFeats"]) if (!Array.isArray(c[k])) c[k] = [];
   if (!hadHpAuto) c.hpAuto = false;
   if (typeof c.lineage !== "string") c.lineage = "";
+  if (typeof c.portrait !== "string" || !/^data:image\/(jpeg|png|webp);base64,/.test(c.portrait)) c.portrait = "";
   c.attacks.forEach(a => { if (a.mastery === "Atordoante (Topple)") a.mastery = "Derrubar (Topple)"; });
   c.items.forEach(i => { if (!i.kind) i.kind = "gear"; });
   if (!hadAcAuto) c.acAuto = false;
@@ -1601,7 +1607,7 @@ function wizFinish(){
   store.chars[c.id] = c; store.cur = c.id; save(c); closeDlg(); render();
   const target = d.target; wiz = null;
   if (target > 1) startLevelUp(target);
-  else showToast({ label: c.name, total: "✓", detail: "Personagem criado. Adicione equipamento pelo Catálogo na aba Itens." });
+  else showToast({ label: c.name, total: "✓", detail: "Personagem criado. Adicione equipamento pelo Catálogo na aba Itens" + (spellRules(c) ? " e magias pelo Catálogo na aba Magias." : ".") });
 }
 
 /* ---------- subir de nível ---------- */
@@ -1635,7 +1641,8 @@ function dlgLevelUp(){
     h += `<h3>${c.cls === "Mago" ? "Erudito" : "Especialização"}</h3><p class="small">Escolha ${ex} perícia(s) em que é proficiente.</p>` +
       (pool.length ? pool.map(k => `<label class="chk"><input type="checkbox" name="exp" value="${k}"> ${skName(k)}</label>`).join("") : `<p class="muted small">Você não tem perícias elegíveis; marque a proficiência na aba Ficha e ajuste depois.</p>`);
   }
-  if (casterType(next)) h += `<p class="small muted">Os espaços de magia serão atualizados pela tabela.${c.cls === "Bruxo" ? "" : " Lembre de preparar novas magias na aba Magias."}</p>`;
+  if (casterType(next)) { const r1 = spellRules(c), r2 = spellRules(next);
+    h += `<h3>Magias</h3><p class="small">No nível ${L}: <b>${r2.cantrips}</b> truques${r1 && r2.cantrips > r1.cantrips ? " (+" + (r2.cantrips - r1.cantrips) + ")" : ""}, <b>${r2.prepared}</b> magias preparadas${r1 && r2.prepared > r1.prepared ? " (+" + (r2.prepared - r1.prepared) + ")" : ""}, até o <b>${r2.maxLvl}º círculo</b>. Os espaços são atualizados sozinhos; escolha as novas magias pelo Catálogo na aba Magias.</p>`; }
   h += `<div class="acts">${lvlTarget > L ? `<button type="button" class="btn ghost" data-act="lvl-stop" style="margin-right:auto">Parar aqui</button>` : ""}<button type="button" class="btn ghost" data-act="dlg-close">Cancelar</button><button type="button" class="btn gold" data-act="lvl-confirm">Subir para ${L}</button></div>`;
   openDlg(h);
 }
@@ -1669,6 +1676,665 @@ function confirmLevelUp(){
   if (lvlTarget > L) { dlgLevelUp(); return; }
   closeDlg();
   showToast({ label: `${c.name} subiu para o nível ${L}!`, total: L, detail: msgs.join(". ") + "." });
+}
+
+/* ================= MAGIAS (Livro do Jogador 2024) ================= */
+const SPELLS_RAW = `Acid Splash;Respingo Ácido;0;V;sw;;1d6
+Blade Ward;Proteção contra Lâminas;0;A;bskw;c;
+Chill Touch;Toque Arrepiante;0;N;skw;;1d10
+Dancing Lights;Globos de Luz;0;I;bsw;c;
+Druidcraft;Arte Druídica;0;T;d;;
+Eldritch Blast;Rajada Mística;0;V;k;;1d10
+Elementalism;Elementalismo;0;T;dsw;;
+Fire Bolt;Raio de Fogo;0;V;sw;;1d10
+Friends;Amizade;0;E;bskw;c;
+Guidance;Orientação;0;D;cd;c;
+Light;Luz;0;V;bcsw;;
+Mage Hand;Mãos Mágicas;0;C;bskw;;
+Mending;Consertar;0;T;bcdsw;;
+Message;Mensagem;0;T;bdsw;;
+Mind Sliver;Lasca Mental;0;E;skw;;1d6
+Minor Illusion;Ilusão Menor;0;I;bskw;;
+Poison Spray;Spray Venenoso;0;N;dskw;;1d12
+Prestidigitation;Prestidigitação;0;T;bskw;;
+Produce Flame;Criar Chamas;0;C;d;;1d8
+Ray of Frost;Raio de Gelo;0;V;sw;;1d8
+Resistance;Resistência;0;A;cd;c;
+Sacred Flame;Chama Sagrada;0;V;c;;1d8
+Shillelagh;Shillelagh;0;T;d;;
+Shocking Grasp;Toque Chocante;0;V;sw;;1d8
+Sorcerous Burst;Explosão Feiticeira;0;V;s;;1d8
+Spare the Dying;Poupar os Moribundos;0;N;cd;;
+Starry Wisp;Fagulha Estelar;0;V;bd;;1d8
+Thaumaturgy;Taumaturgia;0;T;c;;
+Thorn Whip;Chicote de Espinhos;0;T;d;;1d6
+Thunderclap;Estrondo;0;V;bdskw;;1d6
+Toll the Dead;Dobre Fúnebre;0;N;ckw;;1d8
+True Strike;Golpe Certeiro;0;D;bskw;;
+Vicious Mockery;Zombaria Viciosa;0;E;b;;1d6
+Word of Radiance;Palavra Radiante;0;V;c;;1d6
+Alarm;Alarme;1;A;rw;r;
+Animal Friendship;Amizade Animal;1;E;bdr;;
+Armor of Agathys;Armadura de Agathys;1;A;k;;
+Arms of Hadar;Braços de Hadar;1;C;k;;2d6
+Bane;Perdição;1;E;bck;c;
+Bless;Bênção;1;E;cp;c;
+Burning Hands;Mãos Flamejantes;1;V;sw;;3d6
+Charm Person;Enfeitiçar Pessoa;1;E;bdskw;;
+Chromatic Orb;Orbe Cromático;1;V;sw;;3d8
+Color Spray;Spray de Cores;1;I;bsw;;
+Command;Comando;1;E;bcp;;
+Compelled Duel;Duelo Compelido;1;E;p;c;
+Comprehend Languages;Compreender Idiomas;1;D;bskw;r;
+Create or Destroy Water;Criar ou Destruir Água;1;T;cd;;
+Cure Wounds;Curar Ferimentos;1;A;bcdpr;;2d8+MOD
+Detect Evil and Good;Detectar o Bem e o Mal;1;D;cp;c;
+Detect Magic;Detectar Magia;1;D;bcdprsw;cr;
+Detect Poison and Disease;Detectar Veneno e Doença;1;D;cdpr;cr;
+Disguise Self;Disfarçar-se;1;I;bsw;;
+Dissonant Whispers;Sussurros Dissonantes;1;E;b;;3d6
+Divine Favor;Favor Divino;1;T;p;;
+Divine Smite;Golpe Divino;1;V;p;;2d8
+Ensnaring Strike;Golpe Constritor;1;C;r;c;
+Entangle;Constrição;1;C;dr;c;
+Expeditious Retreat;Recuo Acelerado;1;T;skw;c;
+Faerie Fire;Fogo Feérico;1;V;bd;c;
+False Life;Vitalidade Falsa;1;N;sw;;
+Feather Fall;Queda Suave;1;T;bsw;;
+Find Familiar;Encontrar Familiar;1;C;w;r;
+Fog Cloud;Nuvem de Névoa;1;C;drsw;c;
+Goodberry;Bom Fruto;1;C;dr;;
+Grease;Área Escorregadia;1;C;sw;;
+Guiding Bolt;Raio Guia;1;V;c;;4d6
+Hail of Thorns;Saraivada de Espinhos;1;C;r;;1d10
+Healing Word;Palavra Curativa;1;A;bcd;;2d4+MOD
+Hellish Rebuke;Repreensão Infernal;1;V;k;;2d10
+Heroism;Heroísmo;1;E;bp;c;
+Hex;Maldição;1;E;k;c;1d6
+Hunter's Mark;Marca do Caçador;1;D;r;c;1d6
+Ice Knife;Faca de Gelo;1;C;dsw;;2d6
+Identify;Identificação;1;D;bw;r;
+Illusory Script;Escrita Ilusória;1;I;bkw;r;
+Inflict Wounds;Infligir Ferimentos;1;N;c;;2d10
+Jump;Salto;1;T;drsw;;
+Longstrider;Passos Longos;1;T;bdrw;;
+Mage Armor;Armadura Arcana;1;A;sw;;
+Magic Missile;Mísseis Mágicos;1;V;sw;;3d4+3
+Protection from Evil and Good;Proteção contra o Bem e o Mal;1;A;ckpw;c;
+Purify Food and Drink;Purificar Alimentos;1;T;cdp;r;
+Ray of Sickness;Raio Adoecedor;1;N;sw;;2d8
+Sanctuary;Santuário;1;A;c;;
+Searing Smite;Golpe Abrasador;1;V;p;;1d6
+Shield;Escudo Arcano;1;A;sw;;
+Shield of Faith;Escudo da Fé;1;A;cp;c;
+Silent Image;Imagem Silenciosa;1;I;bsw;c;
+Sleep;Sono;1;E;bsw;c;
+Speak with Animals;Falar com Animais;1;D;bdr;r;
+Tasha's Hideous Laughter;Riso Histérico de Tasha;1;E;bw;c;
+Tenser's Floating Disk;Disco Flutuante de Tenser;1;C;w;r;
+Thunderous Smite;Golpe Trovejante;1;V;p;;2d6
+Thunderwave;Onda Trovejante;1;V;bdsw;;2d8
+Unseen Servant;Servo Invisível;1;C;bkw;r;
+Witch Bolt;Raio de Bruxa;1;V;skw;c;2d12
+Wrathful Smite;Golpe Colérico;1;N;p;;1d6
+Aid;Auxílio;2;A;bcdpr;;
+Alter Self;Alterar-se;2;T;sw;c;
+Animal Messenger;Mensageiro Animal;2;E;bdr;r;
+Arcane Lock;Tranca Arcana;2;A;w;;
+Arcane Vigor;Vigor Arcano;2;A;sw;;
+Augury;Augúrio;2;D;cdw;r;
+Barkskin;Pele de Árvore;2;T;dr;;
+Blindness/Deafness;Cegueira/Surdez;2;T;bcsw;;
+Blur;Nublar;2;I;sw;c;
+Calm Emotions;Acalmar Emoções;2;E;bc;c;
+Cloud of Daggers;Nuvem de Adagas;2;C;bskw;c;4d4
+Continual Flame;Chama Contínua;2;V;cdw;;
+Cordon of Arrows;Cordão de Flechas;2;T;r;;1d6
+Crown of Madness;Coroa da Loucura;2;E;bskw;c;
+Darkness;Escuridão;2;V;skw;c;
+Darkvision;Visão no Escuro;2;T;drsw;;
+Detect Thoughts;Detectar Pensamentos;2;D;bsw;c;
+Dragon's Breath;Sopro de Dragão;2;T;sw;c;3d6
+Enhance Ability;Aprimorar Atributo;2;T;bcdrsw;c;
+Enlarge/Reduce;Aumentar/Reduzir;2;T;bdsw;c;
+Enthrall;Enlevar;2;E;bk;c;
+Find Steed;Encontrar Montaria;2;C;p;;
+Find Traps;Encontrar Armadilhas;2;D;cdr;;
+Flame Blade;Lâmina Flamejante;2;V;ds;c;3d6
+Flaming Sphere;Esfera Flamejante;2;C;dsw;c;2d6
+Gentle Repose;Repouso Tranquilo;2;N;cpw;r;
+Gust of Wind;Lufada de Vento;2;V;drsw;c;
+Heat Metal;Esquentar Metal;2;T;bd;c;2d8
+Hold Person;Imobilizar Pessoa;2;E;bcdskw;c;
+Invisibility;Invisibilidade;2;I;bskw;c;
+Knock;Arrombar;2;T;bsw;;
+Lesser Restoration;Restauração Menor;2;A;bcdpr;;
+Levitate;Levitação;2;T;sw;c;
+Locate Animals or Plants;Localizar Animais ou Plantas;2;D;bdr;r;
+Locate Object;Localizar Objeto;2;D;bcdprw;c;
+Magic Mouth;Boca Encantada;2;I;bw;r;
+Magic Weapon;Arma Mágica;2;T;prsw;;
+Melf's Acid Arrow;Flecha Ácida de Melf;2;V;w;;4d4
+Mind Spike;Ataque Mental;2;D;skw;c;3d8
+Mirror Image;Imagem Espelhada;2;I;bskw;;
+Misty Step;Passo Nebuloso;2;C;skw;;
+Moonbeam;Raio Lunar;2;V;d;c;2d10
+Nystul's Magic Aura;Aura Mágica de Nystul;2;I;w;;
+Pass without Trace;Passar sem Rastro;2;A;dr;c;
+Phantasmal Force;Força Fantasmagórica;2;I;bsw;c;1d8
+Prayer of Healing;Oração de Cura;2;A;cp;;2d8+MOD
+Protection from Poison;Proteção contra Veneno;2;A;cdpr;;
+Ray of Enfeeblement;Raio do Enfraquecimento;2;N;kw;c;
+Rope Trick;Truque de Corda;2;T;w;;
+Scorching Ray;Raio Ardente;2;V;sw;;2d6
+See Invisibility;Ver o Invisível;2;D;bsw;;
+Shatter;Despedaçar;2;V;bskw;;3d8
+Shining Smite;Golpe Brilhante;2;T;p;c;2d6
+Silence;Silêncio;2;I;bcr;cr;
+Spider Climb;Patas de Aranha;2;T;skw;c;
+Spike Growth;Crescer Espinhos;2;T;dr;c;2d4
+Spiritual Weapon;Arma Espiritual;2;V;c;c;1d8+MOD
+Suggestion;Sugestão;2;E;bskw;c;
+Summon Beast;Invocar Fera;2;C;dr;c;
+Warding Bond;Vínculo Protetor;2;A;cp;;
+Web;Teia;2;C;sw;c;
+Zone of Truth;Zona da Verdade;2;E;bcp;;
+Animate Dead;Animar Mortos;3;N;cw;;
+Aura of Vitality;Aura de Vitalidade;3;A;cdp;c;2d6
+Beacon of Hope;Sinal de Esperança;3;A;c;c;
+Bestow Curse;Rogar Maldição;3;N;bcw;c;
+Blinding Smite;Golpe Cegante;3;V;p;;3d8
+Blink;Piscar;3;T;sw;;
+Call Lightning;Invocar Relâmpago;3;C;d;c;3d10
+Clairvoyance;Clarividência;3;D;bcsw;c;
+Conjure Animals;Conjurar Animais;3;C;dr;c;
+Conjure Barrage;Conjurar Rajada;3;C;r;;5d8
+Counterspell;Contramágica;3;A;ksw;;
+Create Food and Water;Criar Alimentos e Água;3;C;cp;;
+Crusader's Mantle;Manto do Cruzado;3;V;p;c;1d4
+Daylight;Luz do Dia;3;V;cdprs;;
+Dispel Magic;Dissipar Magia;3;A;bcdpskw;;
+Elemental Weapon;Arma Elemental;3;T;dpr;c;1d4
+Fear;Medo;3;I;bskw;c;
+Feign Death;Fingir Morte;3;N;bcdw;r;
+Fireball;Bola de Fogo;3;V;sw;;8d6
+Fly;Voo;3;T;skw;c;
+Gaseous Form;Forma Gasosa;3;T;skw;c;
+Glyph of Warding;Glifo de Proteção;3;A;bcw;;
+Haste;Velocidade;3;T;sw;c;
+Hunger of Hadar;Fome de Hadar;3;C;k;c;2d6
+Hypnotic Pattern;Padrão Hipnótico;3;I;bskw;c;
+Leomund's Tiny Hut;Pequena Cabana de Leomund;3;V;bw;r;
+Lightning Arrow;Flecha Relampejante;3;T;r;;4d8
+Lightning Bolt;Relâmpago;3;V;sw;;8d6
+Magic Circle;Círculo Mágico;3;A;ckpw;;
+Major Image;Imagem Maior;3;I;bskw;c;
+Mass Healing Word;Palavra Curativa em Massa;3;A;bc;;2d4+MOD
+Meld into Stone;Fundir-se às Rochas;3;T;cdr;r;
+Nondetection;Indetectável;3;A;brw;;
+Phantom Steed;Corcel Fantasma;3;I;w;r;
+Plant Growth;Crescimento de Plantas;3;T;bdr;;
+Protection from Energy;Proteção contra Energia;3;A;cdrsw;c;
+Remove Curse;Remover Maldição;3;A;cpkw;;
+Revivify;Revivificar;3;N;cdpr;;
+Sending;Enviar Mensagem;3;D;bcw;;
+Sleet Storm;Nevasca;3;C;dsw;c;
+Slow;Lentidão;3;T;bsw;c;
+Speak with Dead;Falar com os Mortos;3;N;bcw;;
+Speak with Plants;Falar com Plantas;3;T;bdr;;
+Spirit Guardians;Guardiões Espirituais;3;C;c;c;3d8
+Stinking Cloud;Névoa Fétida;3;C;bsw;c;
+Summon Fey;Invocar Fada;3;C;dkrw;c;
+Summon Undead;Invocar Morto-Vivo;3;N;kw;c;
+Tongues;Idiomas;3;D;bcskw;;
+Vampiric Touch;Toque Vampírico;3;N;skw;c;3d6
+Water Breathing;Respirar na Água;3;T;drsw;r;
+Water Walk;Caminhar sobre a Água;3;T;cdrs;r;
+Wind Wall;Muralha de Vento;3;V;dr;c;4d8
+Arcane Eye;Olho Arcano;4;D;w;c;
+Aura of Life;Aura de Vida;4;A;cp;c;
+Aura of Purity;Aura de Pureza;4;A;cp;c;
+Banishment;Banimento;4;A;cpskw;c;
+Blight;Praga;4;N;dskw;;8d8
+Charm Monster;Enfeitiçar Monstro;4;E;bdskw;;
+Compulsion;Compulsão;4;E;b;c;
+Confusion;Confusão;4;E;bdsw;c;
+Conjure Minor Elementals;Conjurar Elementais Menores;4;C;dw;c;
+Conjure Woodland Beings;Conjurar Seres da Floresta;4;C;dr;c;
+Control Water;Controlar a Água;4;T;cdw;c;
+Death Ward;Proteção contra a Morte;4;A;cp;;
+Dimension Door;Porta Dimensional;4;C;bskw;;
+Divination;Adivinhação;4;D;cdw;r;
+Dominate Beast;Dominar Fera;4;E;drs;c;
+Evard's Black Tentacles;Tentáculos Negros de Evard;4;C;w;c;3d6
+Fabricate;Fabricar;4;T;w;;
+Fire Shield;Escudo de Fogo;4;V;dsw;;2d8
+Fount of Moonlight;Fonte do Luar;4;V;bd;c;2d6
+Freedom of Movement;Liberdade de Movimento;4;A;bcdr;;
+Giant Insect;Inseto Gigante;4;C;d;c;
+Grasping Vine;Vinha Agarradora;4;C;dr;c;
+Greater Invisibility;Invisibilidade Maior;4;I;bsw;c;
+Guardian of Faith;Guardião da Fé;4;C;c;;
+Hallucinatory Terrain;Terreno Alucinógeno;4;I;bdkw;;
+Ice Storm;Tempestade de Gelo;4;V;dsw;;2d10+4d6
+Leomund's Secret Chest;Baú Secreto de Leomund;4;C;w;;
+Locate Creature;Localizar Criatura;4;D;bcdprw;c;
+Mordenkainen's Faithful Hound;Cão Fiel de Mordenkainen;4;C;w;;
+Mordenkainen's Private Sanctum;Santuário Particular de Mordenkainen;4;A;w;;
+Otiluke's Resilient Sphere;Esfera Resiliente de Otiluke;4;A;w;c;
+Phantasmal Killer;Assassino Fantasmagórico;4;I;bw;c;4d10
+Polymorph;Metamorfose;4;T;bdsw;c;
+Staggering Smite;Golpe Atordoante;4;E;p;;4d6
+Stone Shape;Moldar Rochas;4;T;cdw;;
+Stoneskin;Pele de Pedra;4;T;drsw;c;
+Summon Aberration;Invocar Aberração;4;C;kw;c;
+Summon Construct;Invocar Constructo;4;C;w;c;
+Summon Elemental;Invocar Elemental;4;C;drw;c;
+Vitriolic Sphere;Esfera Vitriólica;4;V;sw;;10d4
+Wall of Fire;Muralha de Fogo;4;V;dsw;c;5d8
+Animate Objects;Animar Objetos;5;T;bsw;c;
+Antilife Shell;Concha Antivida;5;A;d;c;
+Awaken;Despertar;5;T;bd;;
+Banishing Smite;Golpe Banidor;5;C;p;c;5d10
+Bigby's Hand;Mão de Bigby;5;V;sw;c;
+Circle of Power;Círculo de Poder;5;A;cpw;c;
+Cloudkill;Névoa Mortal;5;C;sw;c;5d8
+Commune;Comunhão;5;D;c;r;
+Commune with Nature;Comunhão com a Natureza;5;D;dr;r;
+Cone of Cold;Cone de Frio;5;V;dsw;;8d8
+Conjure Elemental;Conjurar Elemental;5;C;dw;c;
+Conjure Volley;Conjurar Saraivada;5;C;r;;8d8
+Contact Other Plane;Contatar Outro Plano;5;D;kw;r;
+Contagion;Contágio;5;N;cd;;
+Creation;Criação;5;I;sw;;
+Destructive Wave;Onda Destrutiva;5;V;p;;5d6+5d6
+Dispel Evil and Good;Dissipar o Bem e o Mal;5;A;cp;c;
+Dominate Person;Dominar Pessoa;5;E;bskw;c;
+Dream;Sonho;5;I;bkw;;
+Flame Strike;Coluna de Chamas;5;V;c;;5d6+5d6
+Geas;Missão;5;E;bcdpw;;
+Greater Restoration;Restauração Maior;5;A;bcdpr;;
+Hallow;Consagrar;5;A;c;;
+Hold Monster;Imobilizar Monstro;5;E;bskw;c;
+Insect Plague;Praga de Insetos;5;C;cds;c;4d10
+Jallarzi's Storm of Radiance;Tempestade Radiante de Jallarzi;5;V;kw;c;2d10
+Legend Lore;Lendas e Histórias;5;D;bcw;;
+Mass Cure Wounds;Curar Ferimentos em Massa;5;A;bcd;;5d8+MOD
+Mislead;Despistar;5;I;bw;c;
+Modify Memory;Modificar Memória;5;E;bw;c;
+Planar Binding;Vínculo Planar;5;A;bcdkw;;
+Raise Dead;Reviver os Mortos;5;N;bcp;;
+Rary's Telepathic Bond;Elo Telepático de Rary;5;D;w;r;
+Scrying;Vidência;5;D;bcdkw;c;
+Seeming;Aparência;5;I;bsw;;
+Steel Wind Strike;Golpe do Vento de Aço;5;C;rw;;6d10
+Summon Celestial;Invocar Celestial;5;C;cp;c;
+Summon Dragon;Invocar Dragão;5;C;w;c;
+Swift Quiver;Aljava Veloz;5;T;r;c;
+Synaptic Static;Estática Sináptica;5;E;bskw;;8d6
+Telekinesis;Telecinésia;5;T;sw;c;
+Teleportation Circle;Círculo de Teletransporte;5;C;bsw;;
+Tree Stride;Caminhar em Árvores;5;C;dr;c;
+Wall of Force;Muralha de Força;5;V;w;c;
+Wall of Stone;Muralha de Pedra;5;V;dsw;c;
+Yolande's Regal Presence;Presença Majestosa de Yolande;5;E;bw;c;4d6
+Arcane Gate;Portal Arcano;6;C;skw;c;
+Blade Barrier;Barreira de Lâminas;6;V;c;c;6d10
+Chain Lightning;Corrente de Relâmpagos;6;V;sw;;10d8
+Circle of Death;Círculo da Morte;6;N;skw;;
+Create Undead;Criar Mortos-Vivos;6;N;ckw;;
+Disintegrate;Desintegrar;6;T;sw;;10d6+40
+Drawmij's Instant Summons;Convocação Instantânea de Drawmij;6;C;w;r;
+Eyebite;Mau-Olhado;6;N;bskw;c;
+Find the Path;Encontrar o Caminho;6;D;bcd;c;
+Flesh to Stone;Carne para Pedra;6;T;dskw;c;
+Forbiddance;Proibição;6;A;c;r;
+Globe of Invulnerability;Globo de Invulnerabilidade;6;A;sw;c;
+Guards and Wards;Guardas e Proteções;6;A;bw;;
+Harm;Ferir;6;N;c;;14d6
+Heal;Cura Completa;6;A;cd;;70
+Heroes' Feast;Banquete dos Heróis;6;C;bcd;;
+Magic Jar;Recipiente Arcano;6;N;w;;
+Mass Suggestion;Sugestão em Massa;6;E;bskw;;
+Move Earth;Mover a Terra;6;T;dsw;c;
+Otiluke's Freezing Sphere;Esfera Congelante de Otiluke;6;V;sw;;10d6
+Otto's Irresistible Dance;Dança Irresistível de Otto;6;E;bw;c;
+Planar Ally;Aliado Planar;6;C;c;;
+Programmed Illusion;Ilusão Programada;6;I;bw;;
+Summon Fiend;Invocar Corruptor;6;C;kw;c;
+Sunbeam;Raio de Sol;6;V;cdsw;c;6d8
+Tasha's Bubbling Cauldron;Caldeirão Borbulhante de Tasha;6;C;kw;;
+Transport via Plants;Transporte via Plantas;6;C;d;;
+True Seeing;Visão da Verdade;6;D;bcskw;;
+Wall of Ice;Muralha de Gelo;6;V;sw;c;10d6
+Wall of Thorns;Muralha de Espinhos;6;C;d;c;7d8
+Wind Walk;Andar no Vento;6;T;d;;
+Word of Recall;Palavra de Recordação;6;C;c;;
+Conjure Celestial;Conjurar Celestial;7;C;c;c;
+Delayed Blast Fireball;Bola de Fogo Controlável;7;V;sw;c;12d6
+Divine Word;Palavra Divina;7;V;c;;
+Etherealness;Forma Etérea;7;C;bcskw;;
+Finger of Death;Dedo da Morte;7;N;skw;;7d8+30
+Fire Storm;Tempestade de Fogo;7;V;cds;;7d10
+Forcecage;Jaula de Força;7;V;bkw;c;
+Mirage Arcane;Miragem Arcana;7;I;bdw;;
+Mordenkainen's Magnificent Mansion;Mansão Magnífica de Mordenkainen;7;C;bw;;
+Mordenkainen's Sword;Espada de Mordenkainen;7;V;bw;c;4d12
+Plane Shift;Mudança de Plano;7;C;cdskw;;
+Power Word Fortify;Palavra de Poder: Fortalecer;7;E;bc;;
+Prismatic Spray;Spray Prismático;7;V;bsw;;12d6
+Project Image;Projetar Imagem;7;I;bw;c;
+Regenerate;Regeneração;7;T;bcd;;
+Resurrection;Ressurreição;7;N;bc;;
+Reverse Gravity;Inverter a Gravidade;7;T;dsw;c;
+Sequester;Isolamento;7;T;w;;
+Simulacrum;Simulacro;7;I;w;;
+Symbol;Símbolo;7;A;bcdw;;
+Teleport;Teletransporte;7;C;bsw;;
+Animal Shapes;Formas Animais;8;T;d;;
+Antimagic Field;Campo Antimagia;8;A;cw;c;
+Antipathy/Sympathy;Antipatia/Simpatia;8;E;bdw;;
+Befuddlement;Confusão Mental;8;E;bdkw;;10d12
+Clone;Clone;8;N;w;;
+Control Weather;Controlar o Clima;8;T;cdw;c;
+Demiplane;Semiplano;8;C;skw;;
+Dominate Monster;Dominar Monstro;8;E;bskw;c;
+Earthquake;Terremoto;8;T;cds;c;
+Glibness;Lábia;8;E;bk;;
+Holy Aura;Aura Sagrada;8;A;c;c;
+Incendiary Cloud;Nuvem Incendiária;8;C;dsw;c;10d8
+Maze;Labirinto;8;C;w;c;
+Mind Blank;Mente em Branco;8;A;bw;;
+Power Word Stun;Palavra de Poder: Atordoar;8;E;bskw;;
+Sunburst;Explosão Solar;8;V;cdsw;;12d6
+Telepathy;Telepatia;8;D;w;;
+Tsunami;Tsunami;8;C;d;c;6d10
+Astral Projection;Projeção Astral;9;N;ckw;;
+Foresight;Presciência;9;D;bdkw;;
+Gate;Portal;9;C;csw;c;
+Imprisonment;Aprisionamento;9;A;kw;;
+Mass Heal;Cura Completa em Massa;9;A;c;;
+Meteor Swarm;Chuva de Meteoros;9;V;sw;;20d6+20d6
+Power Word Heal;Palavra de Poder: Curar;9;E;bc;;
+Power Word Kill;Palavra de Poder: Matar;9;E;bskw;;
+Prismatic Wall;Muralha Prismática;9;A;bw;;
+Shapechange;Mudança de Forma;9;T;dw;c;
+Storm of Vengeance;Tempestade da Vingança;9;C;d;c;
+Time Stop;Parar o Tempo;9;T;sw;;
+True Polymorph;Metamorfose Verdadeira;9;T;bkw;c;
+True Resurrection;Ressurreição Verdadeira;9;N;cd;;
+Weird;Pesadelo Fatal;9;I;kw;c;4d10
+Wish;Desejo;9;C;sw;;`;
+const SCHOOLS = { A:"Abjuração", V:"Evocação", C:"Conjuração", D:"Adivinhação", E:"Encantamento", T:"Transmutação", I:"Ilusão", N:"Necromancia" };
+const SPELL_LETTER = { "Bardo":"b", "Clérigo":"c", "Druida":"d", "Paladino":"p", "Patrulheiro":"r", "Feiticeiro":"s", "Bruxo":"k", "Mago":"w" };
+const LETTER_CLASS = Object.fromEntries(Object.entries(SPELL_LETTER).map(([k, v]) => [v, k]));
+const slug = t => normTxt(t).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+const SPELLS = SPELLS_RAW.split("\n").map(l => { const [en, n, lvl, sch, cls, fl, dmg] = l.split(";"); return { k: slug(en), en, n, lvl: +lvl, sch, cls, conc: fl.includes("c"), rit: fl.includes("r"), dmg: dmg || "" }; });
+const T3 = (a, b, c) => l => l >= 10 ? c : l >= 4 ? b : a;
+const CANTRIPS_KNOWN = { "Bardo":T3(2,3,4), "Clérigo":T3(3,4,5), "Druida":T3(2,3,4), "Feiticeiro":T3(4,5,6), "Bruxo":T3(2,3,4), "Mago":T3(3,4,5), "Paladino":() => 0, "Patrulheiro":() => 0 };
+const PREP_FULL = [4,5,6,7,9,10,11,12,14,15,16,16,17,17,18,18,19,20,21,22];
+const PREPARED = {
+  "Bardo":PREP_FULL, "Clérigo":PREP_FULL, "Druida":PREP_FULL,
+  "Feiticeiro":[2,4,6,7,9,10,11,12,14,15,16,16,17,17,18,18,19,20,21,22],
+  "Bruxo":[2,3,4,5,6,7,8,9,10,10,11,11,12,12,13,13,14,14,15,15],
+  "Mago":[4,5,6,7,9,10,11,12,14,15,16,16,17,18,19,21,22,23,24,25],
+  "Paladino":[2,3,4,5,6,6,7,7,9,9,10,10,11,11,12,12,14,14,15,15],
+  "Patrulheiro":[2,3,4,5,6,6,7,7,9,9,10,10,11,11,12,12,14,14,15,15]
+};
+const PREP_THIRD = [0,0,3,4,4,4,5,6,6,7,8,8,9,10,10,11,11,11,12,13];
+function spellRules(c){
+  const L = Math.max(1, Math.min(20, c.level)), sb = subOf(c), type = casterType(c);
+  if (!type) return null;
+  let letter = SPELL_LETTER[c.cls], cantrips, prepared;
+  if (type === "third") { letter = "w"; cantrips = L < 3 ? 0 : sb.name === "Trapaceiro Arcano" ? (L >= 10 ? 4 : 3) : (L >= 10 ? 3 : 2); prepared = PREP_THIRD[L - 1]; }
+  else { cantrips = (CANTRIPS_KNOWN[c.cls] || (() => 0))(L); prepared = (PREPARED[c.cls] || [])[L - 1] || 0; }
+  const arr = type === "full" ? FULL[L] : type === "half" ? HALF[L] : type === "third" ? THIRD[L] : pactSlots(L);
+  return { letter, cantrips, prepared, maxLvl: arr.length };
+}
+function spellCounts(c){
+  const own = c.spell.list.filter(x => !x.auto);
+  return { cantrips: own.filter(x => x.lvl === 0).length, prepared: own.filter(x => x.lvl > 0 && x.prep).length };
+}
+function spellExpr(c, s){
+  if (!s.dmg) return "";
+  const m = cm(c, spellAbil(c));
+  let e = s.dmg.replace(/\+MOD/g, m >= 0 ? "+" + m : "-" + Math.abs(m));
+  if (s.lvl === 0 && s.ref && s.ref !== "eldritch-blast") { const tier = 1 + (c.level >= 5) + (c.level >= 11) + (c.level >= 17); e = e.replace(/^(\d+)d/, (_, n) => (n * tier) + "d"); }
+  return e;
+}
+let spLvl = "all", spQ = "", spAll = false;
+function dlgSpellPicker(){
+  spQ = "";
+  const c = ch(), r = spellRules(c);
+  if (!r && !spAll) spAll = true;
+  openDlg(`<h2>Catálogo de magias</h2>
+    <p class="small" id="spCount" style="margin:2px 0 8px"></p>
+    <div class="chips" id="spChips" style="margin:0 0 8px"></div>
+    <label class="sr" for="spQ">Buscar magia</label><input id="spQ" placeholder="Buscar (português ou inglês)" value="${esc(spQ)}" autocomplete="off" style="width:100%;border:1.5px solid var(--line);border-radius:10px;background:var(--surface2);padding:9px 11px;min-height:46px">
+    <label class="chk"><input type="checkbox" id="spAll" ${spAll ? "checked" : ""}> Mostrar todas as classes e círculos</label>
+    <div id="spList" class="list" style="margin-top:6px"></div>
+    <p class="muted small">Listas de classe do Livro do Jogador 2024. Magias de subclasse e de espécie entram pela própria ficha. Confira detalhes no livro.</p>
+    <div class="acts"><button type="button" class="btn gold" data-act="dlg-close">Pronto</button></div>`);
+  renderSpellPicker();
+}
+function renderSpellPicker(){
+  const c = ch(), r = spellRules(c), el = document.getElementById("spList"); if (!el) return;
+  const cnt = spellCounts(c);
+  const ce = document.getElementById("spCount");
+  if (ce) ce.innerHTML = r ? `${esc(c.cls)}${casterType(c) === "third" ? " (lista do Mago)" : ""} nível ${c.level}: até o <b>${r.maxLvl}º círculo</b>. Truques: <b class="${cnt.cantrips > r.cantrips ? "neg" : ""}">${cnt.cantrips}/${r.cantrips}</b>. Preparadas: <b class="${cnt.prepared > r.prepared ? "neg" : ""}">${cnt.prepared}/${r.prepared}</b>.` : `${esc(c.cls)} não conjura magias pela tabela da classe; mostrando todas.`;
+  const maxL = spAll || !r ? 9 : r.maxLvl;
+  const levels = ["all", ...Array.from({ length: maxL + 1 }, (_, i) => i).filter(l => spAll || !r || l > 0 || r.cantrips > 0)];
+  if (!levels.includes(spLvl)) spLvl = "all";
+  document.getElementById("spChips").innerHTML = levels.map(l => `<button class="chip ins" data-act="sp-lvl" data-l="${l}" aria-pressed="${String(spLvl) === String(l)}">${l === "all" ? "Todos" : l === 0 ? "Truques" : l + "º"}</button>`).join("");
+  const q = normTxt(spQ), have = new Map(c.spell.list.filter(x => x.ref).map(x => [x.ref, x]));
+  const list = SPELLS.filter(x => (spAll || !r || (x.cls.includes(r.letter) && x.lvl <= r.maxLvl && (x.lvl > 0 || r.cantrips > 0)))
+    && (spLvl === "all" || x.lvl === +spLvl) && (!q || normTxt(x.n).includes(q) || normTxt(x.en).includes(q)))
+    .sort((a, b) => a.lvl - b.lvl || a.n.localeCompare(b.n));
+  el.innerHTML = list.slice(0, 400).map(x => {
+    const got = have.has(x.k);
+    const meta = [x.lvl ? x.lvl + "º círculo" : "Truque", SCHOOLS[x.sch], x.conc ? "concentração" : "", x.rit ? "ritual" : "", x.dmg ? "dano/cura " + x.dmg.replace("+MOD", " + mod.") : "", spAll ? x.cls.split("").map(l => LETTER_CLASS[l]).join(", ") : ""].filter(Boolean).join(". ");
+    return `<div class="item"><div class="item-h"><span class="t">${esc(x.n)} <span class="muted small" style="font-weight:500">${esc(x.en)}</span>${x.conc ? '<span class="tag c">C</span>' : ""}${x.rit ? '<span class="tag r">R</span>' : ""}</span>
+      <button class="btn sm ${got ? "" : "gold"}" data-act="${got ? "sp-cat-del" : "sp-cat-add"}" data-k="${x.k}">${got ? "Remover" : "Adicionar"}</button></div><div class="meta">${esc(meta)}.</div></div>`;
+  }).join("") || `<div class="empty">Nenhuma magia encontrada.</div>`;
+}
+function addSpellFromCatalog(k){
+  const c = ch(), x = SPELLS.find(y => y.k === k); if (!x || c.spell.list.some(s => s.ref === k)) return;
+  const r = spellRules(c), cnt = spellCounts(c);
+  const prep = x.lvl === 0 ? true : !r || cnt.prepared < r.prepared;
+  c.spell.list.push({ id: uid(), ref: x.k, name: x.n, lvl: x.lvl, prep, conc: x.conc, rit: x.rit, dmg: x.dmg, notes: `${SCHOOLS[x.sch]}. Nome original: ${x.en}.` + (x.k === "eldritch-blast" ? " Raios por conjuração: 1 (2 no nível 5, 3 no 11, 4 no 17)." : "") });
+  save(); render(); renderSpellPicker();
+}
+
+/* ================= FICHA EM PDF ================= */
+const JSPDF_URL = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+function loadJsPDF(){
+  if (window.jspdf && window.jspdf.jsPDF) return Promise.resolve();
+  return new Promise((res, rej) => { const sc = document.createElement("script"); sc.src = JSPDF_URL; sc.onload = () => res(); sc.onerror = () => rej(new Error("load")); document.head.appendChild(sc); });
+}
+const pdfTxt = v => String(v == null ? "" : v).replace(/[−–—]/g, "-").replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/…/g, "...").replace(/[^\x09\x0A\x20-\x7E\xA0-\xFF]/g, "");
+function buildPdf(c){
+  syncDerived(c);
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const W = 210, H = 297, M = 10, INK = [31, 36, 48], ACC = [43, 58, 85], MUTE = [96, 104, 118], FILL = [236, 240, 246];
+  const pb = prof(c.level);
+  let page = 1;
+  const color = a => doc.setTextColor(a[0], a[1], a[2]);
+  const font = (sz, st) => { doc.setFont("helvetica", st || "normal"); doc.setFontSize(sz); };
+  const txt = (s, x, y, o) => doc.text(pdfTxt(s), x, y, o || {});
+  const box = (x, y, w, h, label) => {
+    doc.setDrawColor(ACC[0], ACC[1], ACC[2]); doc.setLineWidth(0.35); doc.roundedRect(x, y, w, h, 1.6, 1.6);
+    if (label) { font(6.3, "bold"); color(ACC); txt(label.toUpperCase(), x + 2, y + 3.4); }
+  };
+  const big = (s, x, y, sz) => { font(sz || 14, "bold"); color(INK); txt(s, x, y, { align: "center" }); };
+  const wrap = (s, x, y, w, sz, lh, maxY, onBreak) => {
+    font(sz); color(INK);
+    const lines = doc.splitTextToSize(pdfTxt(s), w);
+    for (const ln of lines) { if (maxY && y > maxY) { if (onBreak) { y = onBreak(); font(sz); color(INK); } else return y; } doc.text(ln, x, y); y += lh; }
+    return y;
+  };
+  const dot = (x, y, lv) => {
+    doc.setDrawColor(ACC[0], ACC[1], ACC[2]); doc.setLineWidth(0.3);
+    if (lv) { doc.setFillColor(ACC[0], ACC[1], ACC[2]); doc.circle(x, y, 1.1, "FD"); } else doc.circle(x, y, 1.1);
+    if (lv === 2) doc.circle(x, y, 1.9);
+  };
+  const footer = () => { font(6.5); color(MUTE); txt(`${c.name}, ficha gerada pela Ficha D&D 2024. Página ${page}.`, W / 2, H - 5, { align: "center" }); };
+  const newPage = () => { footer(); doc.addPage(); page++; return M + 6; };
+  const sectionTitle = (s, y) => { font(11, "bold"); color(ACC); txt(s, M, y); doc.setDrawColor(ACC[0], ACC[1], ACC[2]); doc.setLineWidth(0.5); doc.line(M, y + 1.5, W - M, y + 1.5); return y + 7; };
+
+  /* ---------- página 1: cabeçalho ---------- */
+  font(18, "bold"); color(INK); txt(c.name || "Sem nome", M, M + 7);
+  const sub = [`${c.cls} nível ${c.level}`, c.subclass, speciesLabel(c), c.background].filter(Boolean).join("   |   ");
+  font(9); color(MUTE); txt(sub, M, M + 12.5);
+  const top = M + 16, sw = (W - 2 * M - 7 * 2) / 8;
+  const stat = (i, label, val, small) => { const x = M + i * (sw + 2); box(x, top, sw, 17, label); big(val, x + sw / 2, top + 12.5, 15); if (small) { font(5.8); color(MUTE); txt(small, x + sw / 2, top + 16, { align: "center" }); } };
+  stat(0, "CA", String(c.ac));
+  stat(1, "Iniciativa", sg(initTotal(c)));
+  stat(2, "Desloc.", String(c.speed).replace(".", ",") + " m");
+  stat(3, "Proficiência", sg(pb));
+  stat(4, "Perc. passiva", String(10 + skillBonus(c, SKILLS.find(s => s[0] === "perc"))));
+  stat(5, "Tamanho", c.size || "-");
+  stat(6, "Dados de Vida", `${Math.max(0, c.level - c.hdUsed)}/${c.level}`, "d" + hitDie(c));
+  stat(7, "Inspiração", c.inspiration ? "Sim" : "", "heroica");
+  // PV e estado
+  const y2 = top + 20;
+  box(M, y2, 74, 16, "Pontos de vida"); font(6); color(MUTE); txt("Atuais", M + 12, y2 + 14.5, { align: "center" }); txt("Máximo", M + 37, y2 + 14.5, { align: "center" }); txt("Temporários", M + 62, y2 + 14.5, { align: "center" });
+  big(String(c.hp.cur), M + 12, y2 + 10.5, 15); big(String(c.hp.max), M + 37, y2 + 10.5, 15); big(c.hp.temp ? String(c.hp.temp) : "", M + 62, y2 + 10.5, 15);
+  box(M + 76, y2, 46, 16, "Testes contra a morte");
+  font(6.5); color(INK); txt("Sucessos", M + 78, y2 + 8.5); txt("Falhas", M + 78, y2 + 13.5);
+  for (let i = 0; i < 3; i++) { dot(M + 98 + i * 5, y2 + 7.6, i < c.death.s ? 1 : 0); dot(M + 98 + i * 5, y2 + 12.6, i < c.death.f ? 1 : 0); }
+  box(M + 124, y2, W - 2 * M - 124, 16, "Condições e exaustão");
+  wrap([c.exhaustion ? `Exaustão ${c.exhaustion}` : "", c.conditions.join(", ")].filter(Boolean).join(". ") || "-", M + 126, y2 + 8, W - 2 * M - 128, 8, 3.6);
+
+  /* ---------- atributos, salvaguardas e perícias ---------- */
+  let ly = y2 + 20; const lw = 64;
+  for (const [k, nm] of ABIL) {
+    const sks = SKILLS.filter(s => s[2] === k), bh = 11 + (sks.length + 1) * 4.4 + 1;
+    box(M, ly, lw, bh, "");
+    doc.setFillColor(FILL[0], FILL[1], FILL[2]); doc.roundedRect(M + 0.3, ly + 0.3, lw - 0.6, 9.4, 1.4, 1.4, "F");
+    font(9.5, "bold"); color(ACC); txt(nm.toUpperCase(), M + 2.5, ly + 6.4);
+    font(13, "bold"); color(INK); txt(sg(abilMod(c, k)), M + lw - 15, ly + 7, { align: "center" });
+    font(7.5); color(MUTE); txt(String(c.abilities[k]), M + lw - 5, ly + 7, { align: "center" });
+    let yy = ly + 14.2;
+    const line = (label, val, lv, bold) => { dot(M + 3.5, yy - 1.1, lv); font(7.8, bold ? "bold" : "normal"); color(INK); txt(label, M + 6.5, yy); txt(sg(val), M + lw - 3, yy, { align: "right" }); yy += 4.4; };
+    line("Salvaguarda", saveBonus(c, k), c.saves[k] ? 1 : 0, true);
+    for (const s of sks) line(s[1], skillBonus(c, s), c.skills[s[0]] || 0);
+    ly += bh + 2.2;
+  }
+  font(6); color(MUTE); txt("Bolinha cheia: proficiente. Com anel: especialista.", M, ly + 1.5);
+
+  /* ---------- coluna direita: ataques, características, equipamento ---------- */
+  const rx = M + lw + 4, rw = W - M - rx;
+  let ry = y2 + 20;
+  const atks = c.attacks.slice(0, 9), ah = 9 + Math.max(3, atks.length) * 5.4;
+  box(rx, ry, rw, ah, "Armas e truques de dano");
+  font(6.3, "bold"); color(MUTE); const cols = [rx + 2, rx + 50, rx + 68, rx + 100];
+  txt("NOME", cols[0], ry + 7.5); txt("ACERTO", cols[1], ry + 7.5); txt("DANO E TIPO", cols[2], ry + 7.5); txt("NOTAS", cols[3], ry + 7.5);
+  let ay = ry + 12.5;
+  for (const a of atks) {
+    const b = atkBonus(c, a);
+    font(7.8, "bold"); color(INK); txt(doc.splitTextToSize(pdfTxt(a.name), 46)[0], cols[0], ay);
+    font(7.8); txt(sg(b.hit), cols[1], ay); txt(doc.splitTextToSize(pdfTxt([dmgText(a, b.dmgMod), a.dmgType].filter(Boolean).join(" ")), 31)[0] || "", cols[2], ay);
+    font(6.3); color(MUTE); txt(doc.splitTextToSize(pdfTxt(a.mastery ? "Maestria: " + a.mastery.replace(/ \(.*\)/, "") : a.notes), rw - 100)[0] || "", cols[3], ay);
+    doc.setDrawColor(220, 224, 232); doc.setLineWidth(0.2); doc.line(rx + 1, ay + 1.6, rx + rw - 1, ay + 1.6);
+    ay += 5.4;
+  }
+  ry += ah + 2.5;
+  // características (nomes)
+  const featNames = c.feats.map(f => f.name + (f.lvl > 1 ? ` (${f.lvl})` : "")).filter(n => !/^Proficiências de classe/.test(n));
+  const fh = 9 + Math.ceil(Math.max(2, featNames.length) / 2) * 3.9;
+  box(rx, ry, rw, Math.min(fh, 92), "Características, traços e talentos (detalhes nas últimas páginas)");
+  font(7.2); color(INK);
+  featNames.slice(0, 42).forEach((n, i) => { const col = i % 2, row = Math.floor(i / 2); txt("- " + doc.splitTextToSize(pdfTxt(n), rw / 2 - 6)[0], rx + 2.5 + col * (rw / 2), ry + 8 + row * 3.9); });
+  ry += Math.min(fh, 92) + 2.5;
+  // equipamento e moedas
+  const restH = H - 12 - ry, half = rw / 2 - 1.5;
+  box(rx, ry, half, restH, "Equipamento");
+  let ey = ry + 8;
+  for (const it of c.items) { if (ey > ry + restH - 14) { font(7); color(MUTE); txt("(mais itens na lista do app)", rx + 2.5, ey); break; } font(7.4); color(INK); txt(doc.splitTextToSize(pdfTxt(`${it.qty > 1 ? it.qty + "x " : ""}${it.name}${it.equipped ? " (equipado)" : ""}`), half - 5)[0], rx + 2.5, ey); ey += 3.8; }
+  font(6.3, "bold"); color(ACC); txt("MOEDAS", rx + 2.5, ry + restH - 7.5);
+  font(7.4); color(INK); txt(`PC ${c.coins.pc}   PP ${c.coins.pp}   PE ${c.coins.pe}   PO ${c.coins.po}   PL ${c.coins.pl}`, rx + 2.5, ry + restH - 3);
+  const px = rx + half + 3;
+  let profY = ry, profH = restH;
+  if (c.portrait && restH > 70) {
+    const side = Math.min(half - 5, restH - 50);
+    box(px, ry, half, side + 7, "Retrato");
+    try { doc.addImage(c.portrait, "JPEG", px + (half - side) / 2, ry + 5, side, side); } catch (e) {}
+    profY = ry + side + 9; profH = restH - side - 9;
+  }
+  box(px, profY, half, profH, "Proficiências e idiomas");
+  let py = wrap(c.notes.profs || "-", px + 2.5, profY + 8, half - 5, 7.2, 3.4, profY + profH - 16);
+  if (c.notes.langs) { font(6.3, "bold"); color(ACC); txt("IDIOMAS", px + 2.5, py + 2); wrap(c.notes.langs, px + 2.5, py + 5.5, half - 5, 7.2, 3.4, profY + profH - 3); }
+
+  /* ---------- página 2: magias ---------- */
+  const r = spellRules(c);
+  if (r || c.spell.list.length || c.spell.slots.some(s => s.max)) {
+    let y = newPage();
+    y = sectionTitle("Conjuração", y);
+    const sa = spellAbil(c), m = abilMod(c, sa), bw = (W - 2 * M - 6) / 4;
+    [["Atributo", ABIL.find(a => a[0] === sa)[1]], ["Modificador", sg(m)], ["CD de magia", String(8 + pb + m)], ["Ataque mágico", sg(pb + m)]].forEach(([l, v], i) => { box(M + i * (bw + 2), y, bw, 14, l); big(v, M + i * (bw + 2) + bw / 2, y + 11, 12.5); });
+    y += 18;
+    const slw = (W - 2 * M - 8 * 1.5) / 9;
+    c.spell.slots.forEach((s, i) => {
+      const x = M + i * (slw + 1.5); box(x, y, slw, 15, `${i + 1}º`);
+      font(6); color(MUTE); txt(`${s.max} espaço${s.max === 1 ? "" : "s"}`, x + slw / 2, y + 6.8, { align: "center" });
+      for (let j = 0; j < s.max; j++) { const bx = x + 2 + (j % 4) * 4.2, by = y + 8.5 + Math.floor(j / 4) * 3.4; doc.setDrawColor(ACC[0], ACC[1], ACC[2]); doc.setLineWidth(0.25); if (j < s.used) { doc.setFillColor(ACC[0], ACC[1], ACC[2]); doc.rect(bx, by, 2.8, 2.8, "FD"); } else doc.rect(bx, by, 2.8, 2.8); }
+    });
+    y += 19;
+    if (r) { font(7.5); color(MUTE); txt(`Truques conhecidos: ${spellCounts(c).cantrips}/${r.cantrips}. Magias preparadas: ${spellCounts(c).prepared}/${r.prepared}. Quadrados cheios = espaços gastos.`, M, y); y += 5; }
+    const head = yy => { font(6.3, "bold"); color(MUTE); txt("CÍRC.", M + 1, yy); txt("MAGIA", M + 13, yy); txt("C", M + 92, yy); txt("R", M + 98, yy); txt("PREP.", M + 104, yy); txt("DANO/CURA E NOTAS", M + 116, yy); return yy + 4.5; };
+    y = head(y);
+    const list = c.spell.list.slice().sort((a, b) => a.lvl - b.lvl || a.name.localeCompare(b.name));
+    if (!list.length) { font(8); color(MUTE); txt("Nenhuma magia na lista.", M + 1, y); y += 5; }
+    for (const s of list) {
+      if (y > H - 16) { y = head(newPage()); }
+      font(7.8); color(INK);
+      txt(s.lvl ? s.lvl + "º" : "Truque", M + 1, y); font(7.8, "bold"); txt(doc.splitTextToSize(pdfTxt(s.name), 76)[0], M + 13, y);
+      font(7.8); txt(s.conc ? "C" : "", M + 92, y); txt(s.rit ? "R" : "", M + 98, y);
+      if (s.lvl > 0) dot(M + 107, y - 1.1, s.prep ? 1 : 0);
+      font(6.6); color(MUTE); txt(doc.splitTextToSize(pdfTxt([spellExpr(c, s), s.auto ? "da espécie" : ""].filter(Boolean).join(". ") || (s.notes || "").replace(/Nome original: .*$/, "")), W - M - (M + 116))[0] || "", M + 116, y);
+      doc.setDrawColor(225, 228, 235); doc.setLineWidth(0.2); doc.line(M, y + 1.6, W - M, y + 1.6);
+      y += 5;
+    }
+  }
+
+  /* ---------- características detalhadas e anotações ---------- */
+  let y = newPage();
+  y = sectionTitle("Características, traços e talentos", y);
+  const brk = () => { const ny = newPage(); return sectionTitle("Características (continuação)", ny); };
+  for (const src of SRC_ORDER) {
+    const fs = c.feats.filter(f => (f.src || "Outro") === src); if (!fs.length) continue;
+    if (y > H - 30) y = brk();
+    font(9, "bold"); color(ACC); txt(src.toUpperCase(), M, y); y += 4.5;
+    for (const f of fs) {
+      if (y > H - 22) y = brk();
+      font(8.6, "bold"); color(INK); txt(f.name + (f.lvl > 1 ? `  (nível ${f.lvl})` : ""), M, y); y += 3.9;
+      y = wrap(f.text, M, y, W - 2 * M, 7.8, 3.5, H - 14, brk) + 1.8;
+    }
+    y += 1.5;
+  }
+  const notes = [["Personalidade e história", c.notes.personality], ["Anotações de traços e talentos", c.notes.features], ["Outras anotações", c.notes.other]].filter(n => (n[1] || "").trim());
+  for (const [t, v] of notes) {
+    if (y > H - 30) y = newPage();
+    y = sectionTitle(t, y + 2);
+    y = wrap(v, M, y, W - 2 * M, 8.2, 3.8, H - 14, () => sectionTitle(t + " (continuação)", newPage()));
+  }
+  font(6.3); color(MUTE); txt("Resumos próprios baseados nas regras do D&D 2024 (SRD 5.2, CC-BY-4.0). Consulte o Livro do Jogador para o texto completo.", M, H - 9);
+  footer();
+  return doc;
+}
+async function exportPdf(){
+  const c = ch();
+  showToast({ label: "PDF", total: "…", detail: "Gerando a ficha em PDF…" });
+  try { await loadJsPDF(); }
+  catch (e) { showToast({ label: "PDF", total: "✗", detail: "Não consegui carregar o gerador de PDF. Confira a conexão com a internet e tente de novo.", fumble: true }); return; }
+  const doc = buildPdf(c), fname = (slug(c.name) || "personagem") + "-ficha-dnd.pdf";
+  if (window.claude && typeof window.claude.use === "function") {
+    let dl = null; try { dl = await window.claude.use("downloads"); } catch (e) {}
+    if (!dl) { showToast({ label: "PDF", total: "✗", detail: "Este visualizador não permite baixar arquivos. Abra a ficha em outro navegador ou use a versão do GitHub.", fumble: true }); return; }
+    try { await dl.save({ filename: fname, data: doc.output("blob") }); showToast({ label: "PDF", total: "✓", detail: "Ficha salva: " + fname }); }
+    catch (e) { if (!e || e.code !== "declined") showToast({ label: "PDF", total: "✗", detail: "Não consegui salvar o PDF agora. Tente de novo.", fumble: true }); }
+  } else { doc.save(fname); showToast({ label: "PDF", total: "✓", detail: "Ficha baixada: " + fname }); }
 }
 
 /* ================= ARMAZENAMENTO ================= */
@@ -1835,8 +2501,11 @@ function spellAbil(c){ return c.spell.abil || "int"; }
 function initTotal(c){ return abilMod(c, "dex") + (+c.initBonus || 0) + (c.featKeys.includes("alert") ? prof(c.level) : 0); }
 
 function speciesLabel(c){ return !c.lineage ? c.species : c.lineage.startsWith(c.species) || c.lineage.includes(" ") && c.lineage.toLowerCase().includes(c.species.toLowerCase()) ? c.lineage : `${c.species} (${c.lineage})`; }
+function initials(n){ return (String(n || "?").trim().split(/\s+/).map(w => w[0]).slice(0, 2).join("") || "?").toUpperCase(); }
+function avatarHtml(c){ return c.portrait ? `<img src="${c.portrait}" alt="">` : esc(initials(c.name)); }
 function renderHeader(){
   const c = ch();
+  $("#hAvatar").innerHTML = avatarHtml(c);
   $("#hName").textContent = c.name || "Sem nome";
   const bits = [ (c.cls || "") + (c.subclass ? " (" + c.subclass + ")" : "") + " nível " + c.level, speciesLabel(c) ].filter(Boolean);
   $("#hSub").textContent = bits.join(", ");
@@ -1862,7 +2531,7 @@ function showToast({ label, total, detail, crit, fumble, actions }){
 /* ---------- aba Ficha ---------- */
 function vFicha(c){
   const pb = prof(c.level);
-  const lvlBtn = CLASS_DATA[c.cls] && c.level < 20 ? `<section class="blk"><button class="btn gold full" data-act="lvl-up">Subir para o nível ${c.level + 1}</button></section>` : "";
+  const lvlBtn = `<section class="blk"><div class="row">${CLASS_DATA[c.cls] && c.level < 20 ? `<button class="btn gold full" data-act="lvl-up">Subir para o nível ${c.level + 1}</button>` : ""}<button class="btn ${CLASS_DATA[c.cls] && c.level < 20 ? "" : "full"}" data-act="pdf" style="flex:none">Baixar PDF</button></div></section>`;
   const pp = 10 + skillBonus(c, SKILLS.find(s => s[0] === "perc"));
   return lvlBtn + `
   <section class="blk">
@@ -2031,7 +2700,8 @@ function vMagias(c){
     <p class="muted small" style="margin:8px 0 0">${showAllSlots ? "Digite quantos espaços você tem em cada círculo, ou use “Pela classe”. " : ""}Toque num quadradinho para gastar ou recuperar um espaço. O descanso longo recupera todos${c.cls === "Bruxo" ? " (como Bruxo, o curto também)" : ""}.</p>
   </section>
   <section class="blk">
-    <h2>Magias <button class="btn sm" data-act="sp-new">${ic("plus")} Nova</button></h2>
+    <h2>Magias <span class="row"><button class="btn sm ghost" data-act="sp-new">Nova</button><button class="btn sm gold" data-act="sp-cat">${ic("plus")} Catálogo</button></span></h2>
+    ${(() => { const r = spellRules(c); if (!r) return ""; const n = spellCounts(c); return `<p class="small" style="margin:-4px 0 10px">Truques: <b class="${n.cantrips > r.cantrips ? "neg" : ""}">${n.cantrips}/${r.cantrips}</b>. Preparadas: <b class="${n.prepared > r.prepared ? "neg" : ""}">${n.prepared}/${r.prepared}</b>. Até o ${r.maxLvl}º círculo.</p>`; })()}
     ${levels.length ? levels.map(l => `
       <div class="lvlh">${l === 0 ? "Truques" : l + "º círculo"}</div>
       <div class="list">${byLvl[l].sort((a, b) => a.name.localeCompare(b.name)).map(s => `
@@ -2044,7 +2714,7 @@ function vMagias(c){
           ${s.notes ? `<div class="meta">${esc(s.notes)}</div>` : ""}
           ${(s.dmg || (l > 0 && c.spell.slots[l-1] && c.spell.slots[l-1].max)) ? `<div class="acts">
             ${l > 0 ? `<button class="btn sm gold" data-act="sp-cast" data-id="${s.id}">Conjurar (gasta ${l}º)</button>` : ""}
-            ${s.dmg ? `<button class="btn sm" data-act="sp-dmg" data-id="${s.id}">Rolar ${esc(s.dmg)}</button>` : ""}
+            ${s.dmg ? `<button class="btn sm" data-act="sp-dmg" data-id="${s.id}">Rolar ${esc(spellExpr(c, s))}</button>` : ""}
           </div>` : ""}
         </div>`).join("")}</div>`).join("") : `<div class="empty">Adicione truques e magias. Marque as preparadas e use “Conjurar” para gastar o espaço certo.</div>`}
     <p class="muted small">C = concentração, R = ritual.</p>
@@ -2105,6 +2775,7 @@ function itemActs(c, it){
 /* ---------- catálogos ---------- */
 let catTab = "weapons", catQ = "", featTab = "origin", featQ = "";
 function dlgCatalog(){
+  catQ = "";
   openDlg(`<h2>Catálogo de equipamento</h2>
     <div class="chips" style="margin:6px 0 10px">${[["weapons","Armas"],["armor","Armaduras"],["gear","Equipamento"]].map(([k, l]) => `<button class="chip ins" data-act="cat-tab" data-k="${k}" aria-pressed="${catTab === k}">${l}</button>`).join("")}</div>
     <label class="sr" for="catQ">Buscar</label><input id="catQ" class="grow" placeholder="Buscar (nome em português ou inglês)" value="${esc(catQ)}" autocomplete="off" style="width:100%;border:1.5px solid var(--line);border-radius:10px;background:var(--surface2);padding:9px 11px;min-height:46px">
@@ -2159,6 +2830,7 @@ function addFromCatalog(k, btn){
   if (btn) { btn.textContent = msg + " ✓"; btn.classList.remove("gold"); btn.classList.add("green"); setTimeout(() => { if (btn.isConnected) { btn.textContent = "Adicionar"; btn.classList.remove("green"); btn.classList.add("gold"); } }, 1600); }
 }
 function dlgFeatPicker(){
+  featQ = "";
   openDlg(`<h2>Escolher talento</h2>
     <div class="chips" style="margin:6px 0 10px">${FEAT_CATS.map(([k, l]) => `<button class="chip ins" data-act="feat-tab" data-k="${k}" aria-pressed="${featTab === k}">${l}</button>`).join("")}</div>
     <label class="sr" for="featQ">Buscar talento</label><input id="featQ" placeholder="Buscar (português ou inglês)" value="${esc(featQ)}" autocomplete="off" style="width:100%;border:1.5px solid var(--line);border-radius:10px;background:var(--surface2);padding:9px 11px;min-height:46px">
@@ -2305,6 +2977,7 @@ function dlgChars(){
       <button class="btn full gold" data-act="char-edit">Editar dados de ${esc(ch().name)}</button>
       <button class="btn full" data-act="char-new">${ic("plus")} Novo personagem (passo a passo)</button>
       ${CLASS_DATA[ch().cls] && ch().level < 20 ? `<button class="btn full" data-act="lvl-up">Subir ${esc(ch().name)} para o nível ${ch().level + 1}</button>` : ""}
+      <button class="btn full" data-act="pdf">Baixar ficha em PDF</button>
       <div class="row"><button class="btn full" data-act="backup-out">Exportar backup</button><button class="btn full" data-act="backup-in">Importar backup</button></div>
       <button class="btn full red" data-act="char-del">Excluir ${esc(ch().name)}</button>
       <button class="btn full ghost" data-act="dlg-close">Fechar</button>
@@ -2319,17 +2992,49 @@ function fillLineage(speciesText, current){
   const cur = lnAlias || current || selEl.value;
   selEl.innerHTML = `<option value="">Escolha…</option>` + Object.keys(L.opts).map(k => `<option value="${esc(k)}" ${k === cur ? "selected" : ""}>${esc(k)}</option>`).join("");
 }
-dlgBody.addEventListener("change", e => { if (wiz && e.target.hasAttribute && e.target.hasAttribute("data-rerender")) { wizCollect(); renderWiz(); } });
+dlgBody.addEventListener("change", e => {
+  if (wiz && e.target.hasAttribute && e.target.hasAttribute("data-rerender")) { wizCollect(); renderWiz(); }
+  if (e.target.id === "spAll") { spAll = e.target.checked; renderSpellPicker(); }
+});
 dlgBody.addEventListener("input", e => {
   if (e.target.name === "species") fillLineage(e.target.value, "");
   if (e.target.id === "catQ") { catQ = e.target.value; renderCatList(); }
   if (e.target.id === "featQ") { featQ = e.target.value; renderFeatList(); }
+  if (e.target.id === "spQ") { spQ = e.target.value; renderSpellPicker(); }
 });
 dlgBody.addEventListener("change", e => { if (e.target.name === "cls") { const dl = document.getElementById("dl-sub"); if (dl) dl.innerHTML = (SUBCLASSES[e.target.value] || []).map(k => `<option value="${esc(k)}"></option>`).join(""); } });
 dlgBody.addEventListener("change", e => { if (e.target.name === "species") fillLineage(e.target.value, ""); });
+async function processPhoto(file){
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    const side = Math.min(img.naturalWidth, img.naturalHeight), S = 480;
+    const cv = document.createElement("canvas"); cv.width = S; cv.height = S;
+    const g = cv.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, S, S);
+    g.drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, S, S);
+    let q = 0.85, data = cv.toDataURL("image/jpeg", q);
+    while (data.length > 160000 && q > 0.45) { q -= 0.1; data = cv.toDataURL("image/jpeg", q); }
+    return data;
+  } finally { URL.revokeObjectURL(url); }
+}
+function refreshPhotoUi(){
+  const c = ch(), a = document.getElementById("dlgAvatar"); if (a) a.innerHTML = avatarHtml(c);
+  const pick = dlgBody.querySelector('[data-act="photo-pick"]'); if (pick) pick.textContent = c.portrait ? "Trocar foto" : "Escolher foto";
+  let del = dlgBody.querySelector('[data-act="photo-del"]');
+  if (c.portrait && !del && pick) { del = document.createElement("button"); del.type = "button"; del.className = "btn sm ghost"; del.dataset.act = "photo-del"; del.textContent = "Remover foto"; pick.after(del); }
+  if (!c.portrait && del) del.remove();
+  renderHeader();
+}
 function dlgCharEdit(){
   const c = ch();
   openDlg(`<form><h2>Dados do personagem</h2>
+    <div class="row" style="gap:14px;margin:6px 0 4px">
+      <div class="avatar big" id="dlgAvatar" aria-hidden="true">${avatarHtml(c)}</div>
+      <div class="list" style="gap:8px">
+        <button type="button" class="btn sm gold" data-act="photo-pick">${c.portrait ? "Trocar foto" : "Escolher foto"}</button>
+        ${c.portrait ? `<button type="button" class="btn sm ghost" data-act="photo-del">Remover foto</button>` : ""}
+      </div>
+    </div>
     ${fld("Nome", inp("name", c.name, 'required maxlength="60" autocomplete="off"'))}
     <div class="grid2">
       ${fld("Classe", sel("cls", Object.keys(CLASSES), c.cls))}
@@ -2364,7 +3069,7 @@ function dlgCharEdit(){
       c.species = spc; c.background = matched(c.background, BACKGROUNDS);
       const L = LINEAGES[c.species];
       c.lineage = L ? (L.opts[lnAlias] ? lnAlias : L.opts[o.lineage] ? o.lineage : "") : "";
-      if (o.auto) applyPresets(c, { speciesChanged: c.species !== oldSpecies || c.lineage !== oldLineage });
+      if (o.auto) { applyPresets(c, { speciesChanged: c.species !== oldSpecies || c.lineage !== oldLineage }); if (c.slotsAuto !== false || !c.spell.slots.some(x => x.max)) { c.slotsAuto = true; autoSlots(c); } }
       save(); closeDlg(); render();
     });
   fillLineage(c.species, c.lineage);
@@ -2556,6 +3261,8 @@ function doLongRest(){
 function fillSlots(){
   const c = ch(), sbt = subOf(c), type = sbt && sbt.caster === "third" ? "third" : (CLASSES[c.cls] || CLASSES.Outra)[2];
   if (!type) { showToast({ label:"Espaços de magia", total:"✗", detail:`${c.cls}${c.subclass ? " (" + c.subclass + ")" : ""} não tem espaços pela tabela. Se for Cavaleiro Místico ou Trapaceiro Arcano, coloque a subclasse nos dados do personagem; para multiclasse, use “Ajustar” e preencha à mão.`, fumble:true }); return; }
+  const tbl = type === "full" ? FULL[c.level] : type === "half" ? HALF[c.level] : type === "third" ? THIRD[c.level] : pactSlots(c.level);
+  if (c.spell.slots.every((x, i) => x.max === (tbl[i] || 0))) { c.slotsAuto = true; showAllSlots = false; save(); rerender(); showToast({ label:"Espaços de magia", total:"✓", detail:`Já estão pela tabela de ${c.cls} nível ${c.level}.` }); return; }
   if (c.spell.slots.some(s => s.max)) { askConfirm("Espaços de magia", `Substituir os espaços atuais pelos da tabela de ${c.cls} nível ${c.level}?`, "Substituir", () => doFillSlots(type)); return; }
   doFillSlots(type);
 }
@@ -2651,16 +3358,25 @@ document.addEventListener("click", e => {
     case "slot-pip": { const s = c.spell.slots[+d.i], j = +d.j; s.used = s.used > j ? j : j + 1; save(); rerender(); break; }
     case "sp-new": dlgSpell(); break;
     case "sp-edit": dlgSpell(findBy(c.spell.list, d.id)); break;
-    case "sp-prep": { const s = findBy(c.spell.list, d.id); if (s) { s.prep = !s.prep; save(); rerender(); } break; }
+    case "sp-prep": {
+      const s = findBy(c.spell.list, d.id); if (!s) break;
+      s.prep = !s.prep; save(); rerender();
+      const r = spellRules(c), n = spellCounts(c);
+      if (s.prep && r && n.prepared > r.prepared) showToast({ label:"Magias preparadas", total:`${n.prepared}/${r.prepared}`, detail:`Passou do limite de ${r.prepared} no nível ${c.level}. Desmarque alguma para ficar dentro da regra.`, fumble:true });
+      break; }
     case "sp-cast": {
       const s = findBy(c.spell.list, d.id); if (!s) break;
       let i = s.lvl - 1; while (i < 9 && !(c.spell.slots[i].max - c.spell.slots[i].used > 0)) i++;
       if (i >= 9) { showToast({ label:s.name, total:"✗", detail:`Sem espaços de ${s.lvl}º círculo ou maior disponíveis.`, fumble:true }); break; }
       c.spell.slots[i].used++; save(); rerender();
       showToast({ label:s.name, total:(i+1) + "º", detail: i + 1 > s.lvl ? `Conjurada usando um espaço de ${i+1}º círculo (não havia de ${s.lvl}º).` : `Espaço de ${i+1}º círculo gasto.`,
-        actions: s.dmg ? [{ label:"Rolar " + s.dmg, fn: () => rollExpr(s.name, s.dmg) }] : null });
+        actions: s.dmg ? [{ label:"Rolar " + spellExpr(c, s), fn: () => rollExpr(s.name, spellExpr(c, s)) }] : null });
       break; }
-    case "sp-dmg": { const s = findBy(c.spell.list, d.id); if (s) rollExpr(s.name, s.dmg); break; }
+    case "sp-dmg": { const s = findBy(c.spell.list, d.id); if (s) rollExpr(s.name, spellExpr(c, s)); break; }
+    case "sp-cat": dlgSpellPicker(); break;
+    case "sp-lvl": spLvl = d.l === "all" ? "all" : +d.l; renderSpellPicker(); break;
+    case "sp-cat-add": addSpellFromCatalog(d.k); break;
+    case "sp-cat-del": { c.spell.list = c.spell.list.filter(x => x.ref !== d.k); save(); render(); renderSpellPicker(); break; }
     case "it-new": dlgItem(); break;
     case "it-edit": dlgItem(findBy(c.items, d.id)); break;
     case "it-qty": { const it = findBy(c.items, d.id); if (it) { it.qty = Math.max(0, it.qty + +d.d); save(); rerender(); } break; }
@@ -2687,8 +3403,17 @@ document.addEventListener("click", e => {
     case "lvl-stop": lvlTarget = 0; closeDlg(); showToast({ label: ch().name, total: ch().level, detail: "Parou no nível " + ch().level + ". Use “Subir de nível” para continuar depois." }); break;
     case "char-del": askConfirm("Excluir personagem", `Excluir ${c.name}? Isso não pode ser desfeito.`, "Excluir", () => removeChar(c.id).then(render), true); break;
     case "backup-out": exportBackup(); break;
+    case "pdf": closeDlg(); exportPdf(); break;
+    case "photo-pick": $("#photoFile").click(); break;
+    case "photo-del": c.portrait = ""; save(c); refreshPhotoUi(); break;
     case "backup-in": $("#importFile").click(); break;
   }
+});
+$("#photoFile").addEventListener("change", async e => {
+  const f = e.target.files && e.target.files[0]; e.target.value = ""; if (!f) return;
+  if (!/^image\//.test(f.type) && !/\.(jpe?g|png|webp|gif|heic|heif)$/i.test(f.name)) { dlgError("Escolha um arquivo de imagem (JPG, PNG…)."); return; }
+  try { const c = ch(); c.portrait = await processPhoto(f); save(c); refreshPhotoUi(); }
+  catch (err) { if (dlg.open) dlgError("Não consegui abrir essa imagem. Tente outra foto (JPG ou PNG)."); else showToast({ label:"Foto", total:"✗", detail:"Não consegui abrir essa imagem.", fumble:true }); }
 });
 $("#importFile").addEventListener("change", e => { const f = e.target.files && e.target.files[0]; if (!f) return; f.text().then(importBackup); e.target.value = ""; });
 
