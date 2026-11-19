@@ -37,6 +37,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.4 var(--body);-w
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+[hidden]{display:none!important}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
 /* ---------- topo ---------- */
@@ -219,6 +220,16 @@ dialog::backdrop{background:rgba(10,12,18,.55)}
 .dlg .acts{justify-content:flex-end;margin-top:14px}
 .err{color:var(--red);background:var(--red-bg);border-radius:10px;padding:8px 10px;margin:10px 0 0;font-weight:700}
 .charlist{list-style:none;margin:8px 0;padding:0}
+details.feat summary{list-style:none;display:flex;align-items:center;gap:8px;min-height:40px;cursor:pointer}
+details.feat summary::-webkit-details-marker{display:none}
+details.feat summary::after{content:"";width:9px;height:9px;border-right:2px solid var(--mute);border-bottom:2px solid var(--mute);transform:rotate(45deg);margin-left:auto;flex:none}
+details.feat[open] summary::after{transform:rotate(-135deg)}
+details.feat .t{flex:0 1 auto}
+.ftxt{margin:4px 0 0;line-height:1.5}
+.tag.lv{background:var(--surface2);color:var(--mute)}
+.tag.ed{background:var(--gold-bg);color:var(--gold)}
+.pool{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
+.pool b{font-size:22px;min-width:76px;font-variant-numeric:tabular-nums}
 .charlist li{display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--line)}
 .charlist li button.pick{flex:1;text-align:left;border:0;background:none;padding:10px 4px;min-height:52px}
 .charlist li button.pick[aria-current="true"] b{color:var(--gold)}
@@ -287,19 +298,881 @@ function blank(){
     spell:{abil:"int", slots:Array.from({length:9},()=>({max:0,used:0})), list:[]},
     items:[], coins:{pc:0,pp:0,pe:0,po:0,pl:0},
     notes:{features:"",profs:"",langs:"",personality:"",other:""},
+    feats:[], featKeys:[], autoSkills:[], autoProfs:"", hpAuto:true, hiddenFeats:[], lineage:"",
     updated:Date.now()
   };
 }
 function normalize(c){
+  const hadHpAuto = !!c && Object.prototype.hasOwnProperty.call(c, "hpAuto");
   const b = blank();
   c = Object.assign(b, c || {});
   for (const k of ["abilities","coins","notes","hp","death"]) c[k] = Object.assign(blank()[k], c[k] || {});
   c.spell = Object.assign(blank().spell, c.spell || {});
   if (!Array.isArray(c.spell.slots) || c.spell.slots.length !== 9) c.spell.slots = blank().spell.slots;
-  for (const k of ["attacks","resources","items","conditions"]) if (!Array.isArray(c[k])) c[k] = [];
+  for (const k of ["attacks","resources","items","conditions","feats","featKeys","autoSkills","hiddenFeats"]) if (!Array.isArray(c[k])) c[k] = [];
+  if (!hadHpAuto) c.hpAuto = false;
+  if (typeof c.lineage !== "string") c.lineage = "";
   if (!Array.isArray(c.spell.list)) c.spell.list = [];
   c.saves = c.saves || {}; c.skills = c.skills || {};
   return c;
+}
+
+/* ================= PREDEFINIÇÕES (D&D 2024) =================
+   Resumos próprios das regras. Nomes entre parênteses = original em inglês. */
+const SK = { Acrobatics:"acro","Animal Handling":"anim",Arcana:"arca",Athletics:"athl",Deception:"dece",History:"hist",Insight:"insi",Intimidation:"inti",Investigation:"inve",Medicine:"medi",Nature:"natu",Perception:"perc",Performance:"perf",Persuasion:"pers",Religion:"reli","Sleight of Hand":"slei",Stealth:"stea",Survival:"surv" };
+const skName = k => (SKILLS.find(s => s[0] === k) || [0, k])[1];
+const byLvl = (l, arr) => { let v = arr[0][1]; for (const [lv, x] of arr) if (l >= lv) v = x; return v; };
+const cm = (c, k) => mod(c.abilities[k]);
+const meters = n => String(n).replace(".", ",");
+const MASTERY = "Use as propriedades de maestria de {n} tipos de arma com que é proficiente; pode trocar um deles após um descanso longo.";
+
+const CLASS_DATA = {
+  "Bárbaro": {
+    skills:[2,["anim","athl","inti","natu","perc","surv"]], armor:"leves, médias e escudos", weapons:"simples e marciais", tools:"",
+    sub:[3,6,10,14], asi:[4,8,12,16],
+    feats:[
+      [1,"Fúria (Rage)", c => `Ação bônus, sem armadura pesada: resistência a dano contundente, cortante e perfurante, vantagem em testes e salvaguardas de Força e +${byLvl(c.level,[[1,2],[9,3],[16,4]])} de dano em ataques com Força. Não conjura nem mantém concentração.`],
+      [1,"Defesa sem Armadura", "Sem armadura, CA = 10 + DES + CON. Pode usar escudo."],
+      [1,"Maestria em Arma", c => MASTERY.replace("{n}", byLvl(c.level,[[1,2],[4,3],[10,4]]))],
+      [2,"Sentido de Perigo", "Vantagem em salvaguardas de Destreza, a menos que esteja Incapacitado."],
+      [2,"Ataque Imprudente", "No seu turno, ganha vantagem nos ataques com Força; ataques contra você também têm vantagem até seu próximo turno."],
+      [3,"Conhecimento Primitivo", "Ganha proficiência em mais uma perícia de Bárbaro. Em Fúria, pode usar Força em testes de Acrobacia, Furtividade, Intimidação, Percepção e Sobrevivência."],
+      [5,"Ataque Extra", "Ataca duas vezes quando usa a ação de Ataque."],
+      [5,"Movimento Rápido", "+3 m de deslocamento quando não usa armadura pesada."],
+      [7,"Instinto Feral", "Vantagem nas rolagens de iniciativa."],
+      [7,"Investida Instintiva", "Ao entrar em Fúria, pode se mover até metade do deslocamento."],
+      [9,"Golpe Brutal", "Ao usar Ataque Imprudente, pode abrir mão da vantagem num ataque para causar +1d10 de dano e um efeito extra (Empurrão ou Tendão)."],
+      [11,"Fúria Implacável", "Se cair a 0 PV em Fúria, salvaguarda de CON (CD 10, +5 a cada uso) para ficar com PV iguais ao dobro do nível."],
+      [13,"Golpe Brutal Aprimorado", "Novas opções de efeito para o Golpe Brutal."],
+      [15,"Fúria Persistente", "Ao rolar iniciativa, pode recuperar todas as Fúrias (1x por descanso longo); a Fúria dura 10 minutos sem precisar ser mantida."],
+      [17,"Golpe Brutal Aprimorado", "O dano extra do Golpe Brutal vira 2d10 e você pode aplicar dois efeitos."],
+      [18,"Poder Indomável", "Se o total de um teste ou salvaguarda de Força for menor que seu valor de Força, use o valor."],
+      [20,"Campeão Primitivo", "+4 em Força e Constituição (máximo 25)."]
+    ],
+    res: c => [{ key:"rage", name:"Fúria", max: byLvl(c.level,[[1,2],[3,3],[6,4],[12,5],[17,6]]), reset:"short1" }]
+  },
+  "Bardo": {
+    skills:[3,Object.values(SK)], armor:"leves", weapons:"simples", tools:"três instrumentos musicais",
+    sub:[3,6,14], asi:[4,8,12,16],
+    feats:[
+      [1,"Inspiração de Bardo", c => `Ação bônus: dá um d${byLvl(c.level,[[1,6],[5,8],[10,10],[15,12]])} a uma criatura a até 18 m, que pode somá-lo a um teste de d20 que falhar. Usos = modificador de Carisma (mínimo 1).`],
+      [1,"Conjuração", "Magias de bardo usando Carisma; pode usar um instrumento musical como foco."],
+      [2,"Especialização", "Especialização em duas perícias em que é proficiente."],
+      [2,"Faz-Tudo (Jack of All Trades)", c => `Soma metade do bônus de proficiência (+${Math.floor(prof(c.level)/2)}) em testes de perícia sem proficiência.`],
+      [5,"Fonte de Inspiração", "Recupera a Inspiração de Bardo também no descanso curto; pode gastar um espaço de magia para recuperar um uso."],
+      [7,"Contraencanto", "Reação: quando você ou um aliado a até 9 m falha numa salvaguarda contra Amedrontado ou Enfeitiçado, ele refaz com vantagem."],
+      [9,"Especialização", "Especialização em mais duas perícias."],
+      [10,"Segredos Mágicos", "Pode escolher magias das listas de Bardo, Clérigo, Druida e Mago."],
+      [18,"Inspiração Superior", "Ao rolar iniciativa, recupera usos de Inspiração de Bardo até ter pelo menos dois."],
+      [20,"Palavras de Criação", "Sempre tem Palavra de Poder: Curar e Palavra de Poder: Matar preparadas e pode afetar uma segunda criatura com elas."]
+    ],
+    res: c => [{ key:"bardic", name:"Inspiração de Bardo", max: Math.max(1, cm(c,"cha")), reset: c.level >= 5 ? "short" : "long" }]
+  },
+  "Bruxo": {
+    skills:[2,["arca","dece","hist","inti","inve","natu","reli"]], armor:"leves", weapons:"simples", tools:"",
+    sub:[3,6,10,14], asi:[4,8,12,16],
+    feats:[
+      [1,"Invocações Místicas", c => `Conhece ${byLvl(c.level,[[1,1],[2,3],[5,5],[7,6],[9,7],[12,8],[15,9],[18,10]])} invocação(ões); pode trocar uma ao subir de nível.`],
+      [1,"Magia de Pacto", "Magias de bruxo usando Carisma; os espaços de Pacto voltam no descanso curto."],
+      [2,"Astúcia Mágica", "Ritual de 1 minuto: recupera metade dos espaços de Pacto (arredondado para cima). 1x por descanso longo."],
+      [9,"Contatar Patrono", "Sempre tem Contatar Outro Plano preparada e pode conjurá-la 1x por descanso longo sem espaço, com sucesso automático na salvaguarda."],
+      [11,"Arcano Místico (6º círculo)", "Escolha uma magia de 6º círculo para conjurar 1x por descanso longo sem gastar espaço."],
+      [13,"Arcano Místico (7º círculo)", "Uma magia de 7º círculo, 1x por descanso longo."],
+      [15,"Arcano Místico (8º círculo)", "Uma magia de 8º círculo, 1x por descanso longo."],
+      [17,"Arcano Místico (9º círculo)", "Uma magia de 9º círculo, 1x por descanso longo."],
+      [20,"Mestre Místico", "Astúcia Mágica passa a recuperar todos os espaços de Pacto."]
+    ],
+    res: c => c.level >= 2 ? [{ key:"cunning", name:"Astúcia Mágica", max:1, reset:"long" }] : []
+  },
+  "Clérigo": {
+    skills:[2,["hist","insi","medi","pers","reli"]], armor:"leves, médias e escudos", weapons:"simples", tools:"",
+    sub:[3,6,17], asi:[4,8,12,16],
+    feats:[
+      [1,"Conjuração", "Magias de clérigo usando Sabedoria; pode usar um símbolo sagrado como foco."],
+      [1,"Ordem Divina", "Escolha Protetor (armadura pesada e armas marciais) ou Taumaturgo (um truque extra e bônus em testes de Arcanismo e Religião)."],
+      [2,"Canalizar Divindade", "Centelha Divina (cura ou dano radiante/necrótico) e Expulsar Mortos-Vivos, além das opções da subclasse. Recupera 1 uso no descanso curto."],
+      [5,"Abrasar Mortos-Vivos", c => `Ao Expulsar Mortos-Vivos, causa ${Math.max(1, cm(c,"wis"))}d8 de dano radiante aos que falharem.`],
+      [7,"Golpes Abençoados", "Escolha Golpe Divino (+1d8 de dano 1x por turno) ou Conjuração Potente (soma SAB ao dano de truques)."],
+      [10,"Intervenção Divina", "Ação de Magia: conjura qualquer magia de clérigo de até 5º círculo sem gastar espaço. 1x por descanso longo."],
+      [14,"Golpes Abençoados Aprimorados", "Golpe Divino vira 2d8, ou Conjuração Potente também concede PV temporários."],
+      [20,"Intervenção Divina Maior", "A Intervenção Divina pode conjurar Desejo (depois, espera 2d4 descansos longos para usar de novo)."]
+    ],
+    res: c => c.level >= 2 ? [{ key:"channel", name:"Canalizar Divindade", max: byLvl(c.level,[[2,2],[6,3],[18,4]]), reset:"short1" }].concat(c.level >= 10 ? [{ key:"intervention", name:"Intervenção Divina", max:1, reset:"long" }] : []) : []
+  },
+  "Druida": {
+    skills:[2,["arca","anim","insi","medi","natu","perc","reli","surv"]], armor:"leves e escudos", weapons:"simples", tools:"kit de herbalismo",
+    sub:[3,6,10,14], asi:[4,8,12,16],
+    feats:[
+      [1,"Conjuração", "Magias de druida usando Sabedoria; pode usar um foco druídico."],
+      [1,"Druídico", "Conhece o idioma secreto dos druidas e sempre tem Falar com Animais preparada."],
+      [1,"Ordem Primal", "Escolha Mágico (um truque extra e bônus em Arcanismo e Natureza) ou Guardião (armas marciais e armadura média)."],
+      [2,"Forma Selvagem", "Ação bônus: assume a forma de uma fera que conhece. Recupera 1 uso no descanso curto."],
+      [2,"Companheiro Selvagem", "Gasta um espaço de magia ou uso de Forma Selvagem para conjurar Encontrar Familiar sem componentes."],
+      [5,"Ressurgimento Selvagem", "Sem usos de Forma Selvagem, pode gastar um espaço de magia para ganhar um; 1x por descanso longo, troca um uso por um espaço de 1º círculo."],
+      [7,"Fúria Elemental", "Escolha Golpe Primal (+1d8 de dano elemental) ou Conjuração Potente (soma SAB ao dano de truques)."],
+      [15,"Fúria Elemental Aprimorada", "Golpe Primal vira 2d8, ou seus truques ganham mais alcance."],
+      [18,"Magias de Fera", "Pode conjurar magias enquanto está na Forma Selvagem."],
+      [20,"Arquidruida", "Ao rolar iniciativa sem usos de Forma Selvagem, recupera um, entre outros benefícios."]
+    ],
+    res: c => c.level >= 2 ? [{ key:"wildshape", name:"Forma Selvagem", max: byLvl(c.level,[[2,2],[6,3],[17,4]]), reset:"short1" }] : []
+  },
+  "Feiticeiro": {
+    skills:[2,["arca","dece","insi","inti","pers","reli"]], armor:"nenhuma", weapons:"simples", tools:"",
+    sub:[3,6,14,18], asi:[4,8,12,16],
+    feats:[
+      [1,"Conjuração", "Magias de feiticeiro usando Carisma."],
+      [1,"Feitiçaria Inata", "Ação bônus: por 1 minuto, +1 na CD das suas magias e vantagem nos seus ataques mágicos. 2 usos por descanso longo."],
+      [2,"Fonte de Magia", c => `${c.level} Pontos de Feitiçaria, que podem virar espaços de magia (e espaços podem virar pontos).`],
+      [2,"Metamagia", "Escolha duas opções de Metamagia para modificar magias gastando Pontos de Feitiçaria."],
+      [5,"Restauração Feiticeira", "Ao terminar um descanso curto, recupera Pontos de Feitiçaria até metade do nível. 1x por descanso longo."],
+      [7,"Feitiçaria Encarnada", "Sem usos de Feitiçaria Inata, gasta 2 Pontos de Feitiçaria para ativá-la; durante ela, pode usar duas Metamagias na mesma magia."],
+      [10,"Metamagia", "Mais duas opções de Metamagia."],
+      [17,"Metamagia", "Mais duas opções de Metamagia."],
+      [20,"Apoteose Arcana", "Durante a Feitiçaria Inata, uma Metamagia por turno sai de graça."]
+    ],
+    res: c => [{ key:"innate", name:"Feitiçaria Inata", max:2, reset:"long" }].concat(c.level >= 2 ? [{ key:"sorcery", name:"Pontos de Feitiçaria", max:c.level, reset:"long" }] : [])
+  },
+  "Guerreiro": {
+    skills:[2,["acro","anim","athl","hist","insi","inti","pers","perc","surv"]], armor:"todas e escudos", weapons:"simples e marciais", tools:"",
+    sub:[3,7,10,15,18], asi:[4,6,8,12,14,16],
+    feats:[
+      [1,"Estilo de Luta", "Ganha um talento de Estilo de Luta."],
+      [1,"Retomar o Fôlego", c => `Ação bônus: recupera 1d10 + ${c.level} PV. Recupera 1 uso no descanso curto.`],
+      [1,"Maestria em Arma", c => MASTERY.replace("{n}", byLvl(c.level,[[1,3],[4,4],[10,5],[16,6]]))],
+      [2,"Surto de Ação", c => `Uma ação extra no seu turno (não pode ser a ação de Magia). ${c.level >= 17 ? "2 usos, mas só 1 por turno" : "1 uso"} por descanso curto.`],
+      [2,"Mente Tática", "Ao falhar num teste de atributo, gasta um uso de Retomar o Fôlego para somar 1d10; se ainda falhar, não gasta o uso."],
+      [5,"Ataque Extra", "Ataca duas vezes quando usa a ação de Ataque."],
+      [5,"Deslocamento Tático", "Ao usar Retomar o Fôlego, pode se mover até metade do deslocamento sem provocar ataques de oportunidade."],
+      [9,"Indomável", c => `Refaz uma salvaguarda que falhou, somando +${c.level}. ${byLvl(c.level,[[9,1],[13,2],[17,3]])} uso(s) por descanso longo.`],
+      [9,"Mestre Tático", "Ao atacar, pode trocar a maestria da arma por Empurrar, Drenar ou Lentidão."],
+      [11,"Dois Ataques Extras", "Ataca três vezes quando usa a ação de Ataque."],
+      [13,"Ataques Estudados", "Ao errar um ataque, tem vantagem no próximo contra a mesma criatura."],
+      [20,"Três Ataques Extras", "Ataca quatro vezes quando usa a ação de Ataque."]
+    ],
+    res: c => [{ key:"secondwind", name:"Retomar o Fôlego", max: byLvl(c.level,[[1,2],[4,3],[10,4]]), reset:"short1" }]
+      .concat(c.level >= 2 ? [{ key:"surge", name:"Surto de Ação", max: c.level >= 17 ? 2 : 1, reset:"short" }] : [])
+      .concat(c.level >= 9 ? [{ key:"indomitable", name:"Indomável", max: byLvl(c.level,[[9,1],[13,2],[17,3]]), reset:"long" }] : [])
+  },
+  "Ladino": {
+    skills:[4,["acro","athl","dece","insi","inti","inve","perc","pers","slei","stea"]], armor:"leves", weapons:"simples e marciais com Acuidade ou Leve", tools:"ferramentas de ladrão",
+    sub:[3,9,13,17], asi:[4,8,10,12,16],
+    feats:[
+      [1,"Especialização", "Especialização em duas perícias em que é proficiente."],
+      [1,"Ataque Furtivo", c => `1x por turno, +${Math.ceil(c.level/2)}d6 de dano com arma de Acuidade ou à distância, se tiver vantagem ou um aliado ao lado do alvo (e você não tiver desvantagem).`],
+      [1,"Gíria de Ladrão", "Conhece a gíria secreta dos ladrões e mais um idioma."],
+      [1,"Maestria em Arma", c => MASTERY.replace("{n}", 2)],
+      [2,"Ação Ardilosa", "Ação bônus para Disparada, Desengajar ou Esconder."],
+      [3,"Mira Firme", "Ação bônus: vantagem no próximo ataque do turno, se você não se moveu."],
+      [5,"Golpe Astuto", "Troca dados do Ataque Furtivo por efeitos como Envenenar, Derrubar, Recuar ou Esconder."],
+      [5,"Esquiva Sobrenatural", "Reação: reduz pela metade o dano de um ataque que você vê."],
+      [6,"Especialização", "Especialização em mais duas perícias."],
+      [7,"Evasão", "Em salvaguardas de Destreza para sofrer metade do dano: sucesso = nenhum dano, falha = metade."],
+      [7,"Talento Confiável", "Em testes de perícia ou ferramenta em que é proficiente, resultados de 9 ou menos no d20 contam como 10."],
+      [11,"Golpe Astuto Aprimorado", "Pode usar dois efeitos de Golpe Astuto no mesmo ataque."],
+      [14,"Golpes Traiçoeiros", "Novos efeitos de Golpe Astuto: Atordoar, Nocautear e Obscurecer."],
+      [15,"Mente Escorregadia", "Proficiência em salvaguardas de Sabedoria e Carisma."],
+      [18,"Elusivo", "Ataques contra você nunca têm vantagem, a menos que esteja Incapacitado."],
+      [20,"Golpe de Sorte", "Ao falhar num teste de d20, transforma o resultado em 20. 1x por descanso curto ou longo."]
+    ],
+    res: c => c.level >= 20 ? [{ key:"luckstroke", name:"Golpe de Sorte", max:1, reset:"short" }] : []
+  },
+  "Mago": {
+    skills:[2,["arca","hist","insi","inve","medi","natu","reli"]], armor:"nenhuma", weapons:"simples", tools:"",
+    sub:[3,6,10,14], asi:[4,8,12,16],
+    feats:[
+      [1,"Conjuração", "Magias de mago usando Inteligência, a partir do grimório."],
+      [1,"Adepto de Rituais", "Conjura como ritual qualquer magia ritual do grimório, mesmo sem tê-la preparada."],
+      [1,"Recuperação Arcana", c => `Ao fim de um descanso curto, recupera espaços de magia que somem até ${Math.ceil(c.level/2)} círculos (nenhum de 6º ou maior). 1x por descanso longo.`],
+      [2,"Erudito", "Especialização em uma perícia: Arcanismo, História, Investigação, Medicina, Natureza ou Religião."],
+      [5,"Memorizar Magia", "Após um descanso curto, troca uma magia preparada por outra do grimório."],
+      [18,"Domínio de Magia", "Uma magia de 1º e uma de 2º círculo do grimório podem ser conjuradas à vontade, sem espaço."],
+      [20,"Magias Assinatura", "Duas magias de 3º círculo sempre preparadas; cada uma pode ser conjurada 1x por descanso curto sem espaço."]
+    ],
+    res: c => [{ key:"arcrec", name:"Recuperação Arcana", max:1, reset:"long" }]
+  },
+  "Monge": {
+    skills:[2,["acro","athl","hist","insi","reli","stea"]], armor:"nenhuma", weapons:"simples e marciais com a propriedade Leve", tools:"uma ferramenta de artesão ou instrumento musical",
+    sub:[3,6,11,17], asi:[4,8,12,16],
+    feats:[
+      [1,"Artes Marciais", c => `Golpes desarmados e armas de monge usam d${byLvl(c.level,[[1,6],[5,8],[11,10],[17,12]])} e podem usar Destreza; ação bônus para um Golpe Desarmado.`],
+      [1,"Defesa sem Armadura", "Sem armadura e sem escudo, CA = 10 + DES + SAB."],
+      [2,"Foco do Monge", c => `${c.level} Pontos de Foco para Rajada de Golpes, Defesa Paciente e Passo do Vento. Recupera no descanso curto.`],
+      [2,"Movimento sem Armadura", c => `+${meters(byLvl(c.level,[[2,3],[6,4.5],[10,6],[14,7.5],[18,9]]))} m de deslocamento sem armadura ou escudo.`],
+      [2,"Metabolismo Estranho", c => `Ao rolar iniciativa, recupera todos os Pontos de Foco e ${"d" + byLvl(c.level,[[1,6],[5,8],[11,10],[17,12]])} + ${c.level} PV. 1x por descanso longo.`],
+      [3,"Defletir Ataques", "Reação: reduz o dano de um ataque que o acerta em 1d10 + DES + nível; se zerar, pode redirecionar gastando 1 Ponto de Foco."],
+      [4,"Queda Lenta", c => `Reação: reduz o dano de queda em ${5 * c.level}.`],
+      [5,"Ataque Extra", "Ataca duas vezes quando usa a ação de Ataque."],
+      [5,"Golpe Atordoante", "1x por turno, ao acertar, gasta 1 Ponto de Foco: o alvo faz salvaguarda de CON ou fica Atordoado."],
+      [6,"Golpes Fortalecidos", "Seus golpes desarmados podem causar dano de força."],
+      [7,"Evasão", "Em salvaguardas de Destreza para sofrer metade do dano: sucesso = nenhum dano, falha = metade."],
+      [9,"Movimento Acrobático", "Pode correr por superfícies verticais e sobre líquidos durante o seu turno."],
+      [10,"Foco Elevado", "Rajada de Golpes, Defesa Paciente e Passo do Vento ficam mais fortes."],
+      [10,"Autorrestauração", "No fim do turno, remove Enfeitiçado, Amedrontado ou Envenenado de si; não sofre exaustão por falta de comida e água."],
+      [13,"Defletir Energia", "Defletir Ataques funciona contra qualquer tipo de dano."],
+      [14,"Sobrevivente Disciplinado", "Proficiência em todas as salvaguardas; gasta 1 Ponto de Foco para refazer uma que falhou."],
+      [15,"Foco Perfeito", "Ao rolar iniciativa com 3 ou menos Pontos de Foco, recupera até ficar com 4."],
+      [18,"Defesa Superior", "Gasta 3 Pontos de Foco: resistência a todo dano, exceto de força, por 1 minuto."],
+      [20,"Corpo e Mente", "+4 em Destreza e Sabedoria (máximo 25)."]
+    ],
+    res: c => c.level >= 2 ? [{ key:"focus", name:"Pontos de Foco", max:c.level, reset:"short" }, { key:"metab", name:"Metabolismo Estranho", max:1, reset:"long" }] : []
+  },
+  "Paladino": {
+    skills:[2,["athl","insi","inti","medi","pers","reli"]], armor:"todas e escudos", weapons:"simples e marciais", tools:"",
+    sub:[3,7,15,20], asi:[4,8,12,16],
+    feats:[
+      [1,"Cura pelas Mãos", c => `Reserva de ${5 * c.level} PV: ação bônus para curar com um toque; 5 pontos removem Envenenado.`],
+      [1,"Conjuração", "Magias de paladino usando Carisma; pode usar um símbolo sagrado como foco."],
+      [1,"Maestria em Arma", c => MASTERY.replace("{n}", 2)],
+      [2,"Estilo de Luta", "Ganha um talento de Estilo de Luta (ou dois truques de clérigo, com Guerreiro Abençoado)."],
+      [2,"Golpe do Paladino", "Sempre tem Golpe Divino preparada e pode conjurá-la sem espaço 1x por descanso longo."],
+      [3,"Canalizar Divindade", "Sentido Divino e as opções da subclasse. Recupera 1 uso no descanso curto."],
+      [5,"Ataque Extra", "Ataca duas vezes quando usa a ação de Ataque."],
+      [5,"Corcel Fiel", "Sempre tem Encontrar Montaria preparada e pode conjurá-la sem espaço 1x por descanso longo."],
+      [6,"Aura de Proteção", c => `Você e aliados a até 3 m somam seu modificador de Carisma (${sg(Math.max(1, cm(c,"cha")))}) às salvaguardas.`],
+      [9,"Abjurar Inimigos", "Usa Canalizar Divindade para deixar inimigos Amedrontados."],
+      [10,"Aura de Coragem", "Você e aliados na sua aura não podem ficar Amedrontados."],
+      [11,"Golpes Radiantes", "+1d8 de dano radiante ao acertar com arma corpo a corpo ou golpe desarmado."],
+      [14,"Toque Restaurador", "Ao usar Cura pelas Mãos, gasta pontos da reserva para remover condições."],
+      [18,"Expansão de Aura", "Suas auras passam a alcançar 9 m."]
+    ],
+    res: c => [{ key:"layonhands", name:"Cura pelas Mãos (PV)", max: 5 * c.level, reset:"long" }]
+      .concat(c.level >= 2 ? [{ key:"smite", name:"Golpe Divino grátis", max:1, reset:"long" }] : [])
+      .concat(c.level >= 3 ? [{ key:"channel", name:"Canalizar Divindade", max: c.level >= 11 ? 3 : 2, reset:"short1" }] : [])
+  },
+  "Patrulheiro": {
+    skills:[3,["anim","athl","insi","inve","natu","perc","stea","surv"]], armor:"leves, médias e escudos", weapons:"simples e marciais", tools:"",
+    sub:[3,7,11,15], asi:[4,8,12,16],
+    feats:[
+      [1,"Conjuração", "Magias de patrulheiro usando Sabedoria."],
+      [1,"Inimigo Favorito", c => `Sempre tem Marca do Caçador preparada e pode conjurá-la ${byLvl(c.level,[[1,2],[5,3],[9,4],[13,5],[17,6]])} vezes por descanso longo sem gastar espaço.`],
+      [1,"Maestria em Arma", c => MASTERY.replace("{n}", 2)],
+      [2,"Explorador Hábil", "Especialização em uma perícia em que é proficiente e dois idiomas."],
+      [2,"Estilo de Luta", "Ganha um talento de Estilo de Luta (ou dois truques de druida, com Guerreiro Druídico)."],
+      [5,"Ataque Extra", "Ataca duas vezes quando usa a ação de Ataque."],
+      [6,"Andarilho", "+3 m de deslocamento e deslocamento de escalada e natação, sem armadura pesada."],
+      [9,"Especialização", "Especialização em mais duas perícias."],
+      [10,"Incansável", "Ação de Magia: ganha 1d8 + SAB de PV temporários; o descanso curto reduz a exaustão em 1."],
+      [13,"Caçador Implacável", "Sofrer dano não quebra sua concentração na Marca do Caçador."],
+      [14,"Véu da Natureza", "Ação bônus: fica Invisível até o fim do seu próximo turno."],
+      [17,"Caçador Preciso", "Vantagem nos ataques contra a criatura marcada pela Marca do Caçador."],
+      [18,"Sentidos Ferais", "Percepção às cegas de 9 m."],
+      [20,"Matador de Inimigos", "O dado de dano da Marca do Caçador vira d10."]
+    ],
+    res: c => [{ key:"favored", name:"Marca do Caçador grátis", max: byLvl(c.level,[[1,2],[5,3],[9,4],[13,5],[17,6]]), reset:"long" }]
+  }
+};
+const SUBCLASSES = {
+  "Bárbaro":["Berserker","Coração Selvagem","Árvore do Mundo","Zelote"], "Bardo":["Colégio da Dança","Colégio do Glamour","Colégio do Conhecimento","Colégio da Bravura"],
+  "Bruxo":["Arquifada","Celestial","Corruptor (Fiend)","Grande Antigo"], "Clérigo":["Domínio da Vida","Domínio da Luz","Domínio da Trapaça","Domínio da Guerra"],
+  "Druida":["Círculo da Terra","Círculo da Lua","Círculo do Mar","Círculo das Estrelas"], "Feiticeiro":["Feitiçaria Aberrante","Feitiçaria Mecânica","Feitiçaria Dracônica","Magia Selvagem"],
+  "Guerreiro":["Mestre de Batalha","Campeão","Cavaleiro Místico","Guerreiro Psíquico"], "Ladino":["Trapaceiro Arcano","Assassino","Lâmina da Alma","Ladrão"],
+  "Mago":["Abjurador","Adivinhador","Evocador","Ilusionista"], "Monge":["Misericórdia","Sombra","Elementos","Mão Aberta"],
+  "Paladino":["Devoção","Glória","Anciões","Vingança"], "Patrulheiro":["Mestre das Feras","Andarilho Feérico","Perseguidor Sombrio","Caçador"]
+};
+
+const SPECIES = {
+  "Aasimar": { size:["Médio","Pequeno"], speed:9, traits:[
+    [1,"Resistência Celestial","Resistência a dano necrótico e radiante."],
+    [1,"Visão no Escuro","Enxerga no escuro até 18 m."],
+    [1,"Mãos Curativas", c => `Ação de Magia: cura ${prof(c.level)}d4 PV com um toque. 1x por descanso longo.`],
+    [1,"Portador da Luz","Conhece o truque Luz (Carisma)."],
+    [3,"Revelação Celestial","Ação bônus: transformação de 1 minuto (Asas Celestiais, Mortalha Interior ou Radiância Interior) com dano extra radiante ou necrótico. 1x por descanso longo."]],
+    res: c => [{ key:"sp-heal", name:"Mãos Curativas", max:1, reset:"long" }].concat(c.level >= 3 ? [{ key:"sp-rev", name:"Revelação Celestial", max:1, reset:"long" }] : []) },
+  "Draconato": { size:["Médio"], speed:9, traits:[
+    [1,"Ancestralidade Dracônica", c => lineageOf(c) ? `Dragão ${c.lineage}: seu sopro e sua resistência são de dano ${lineageOf(c).dmg}.` : "Escolha o dragão ancestral nos dados do personagem; ele define o tipo de dano do sopro e da resistência."],
+    [1,"Arma de Sopro", c => `Substitui um ataque: cone de 4,5 m ou linha de 9 m, ${byLvl(c.level,[[1,1],[5,2],[11,3],[17,4]])}d10 de dano${lineageOf(c) ? " " + lineageOf(c).dmg : ""} (salvaguarda de DES, CD ${8 + cm(c,"con") + prof(c.level)}). Usos = bônus de proficiência por descanso longo.`],
+    [1,"Resistência a Dano", c => lineageOf(c) ? `Resistência a dano ${lineageOf(c).dmg}.` : "Resistência ao tipo de dano da sua ancestralidade."],
+    [1,"Visão no Escuro","Enxerga no escuro até 18 m."],
+    [5,"Voo Dracônico","Ação bônus: asas por 10 minutos, com deslocamento de voo igual ao normal. 1x por descanso longo."]],
+    res: c => [{ key:"sp-breath", name:"Arma de Sopro", max:prof(c.level), reset:"long" }].concat(c.level >= 5 ? [{ key:"sp-fly", name:"Voo Dracônico", max:1, reset:"long" }] : []) },
+  "Anão": { size:["Médio"], speed:9, hpPerLevel:1, traits:[
+    [1,"Visão no Escuro","Enxerga no escuro até 36 m."],
+    [1,"Resiliência Anã","Resistência a dano de veneno e vantagem em salvaguardas contra Envenenado."],
+    [1,"Robustez Anã", c => `+1 PV por nível (+${c.level} no total; já somado no PV automático).`],
+    [1,"Conhecimento das Pedras","Ação bônus: sentido sísmico de 18 m por 10 minutos, tocando pedra. Usos = bônus de proficiência por descanso longo."]],
+    res: c => [{ key:"sp-stone", name:"Conhecimento das Pedras", max:prof(c.level), reset:"long" }] },
+  "Elfo": { size:["Médio"], speed:9, traits:[
+    [1,"Visão no Escuro", c => `Enxerga no escuro até ${c.lineage === "Drow" ? 36 : 18} m.`],
+    [1,"Linhagem Élfica", c => lineageText(c, "Escolha Drow, Alto Elfo ou Elfo da Floresta nos dados do personagem: cada uma dá um truque no 1º nível e magias no 3º e 5º.")],
+    [1,"Ancestralidade Feérica","Vantagem em salvaguardas contra Enfeitiçado."],
+    [1,"Sentidos Aguçados","Proficiência em Intuição, Percepção ou Sobrevivência (marque na aba Ficha)."],
+    [1,"Transe","Não precisa dormir; um descanso longo leva 4 horas de meditação."]] },
+  "Gnomo": { size:["Pequeno"], speed:9, traits:[
+    [1,"Visão no Escuro","Enxerga no escuro até 18 m."],
+    [1,"Astúcia Gnômica","Vantagem em salvaguardas de Inteligência, Sabedoria e Carisma."],
+    [1,"Linhagem Gnômica", c => lineageText(c, "Escolha Gnomo da Floresta ou Gnomo das Rochas nos dados do personagem.")]] },
+  "Golias": { size:["Médio"], speed:10.5, traits:[
+    [1,"Ancestralidade Gigante", c => (lineageOf(c) ? `${c.lineage}. ${lineageOf(c).text}` : "Escolha a ancestralidade (Nuvens, Fogo, Gelo, Colina, Pedra ou Tempestade) nos dados do personagem.") + ` Usos = bônus de proficiência (${prof(c.level)}) por descanso longo.`],
+    [5,"Forma Grande","Ação bônus: fica Grande por 10 minutos, com vantagem em testes de Força e +3 m de deslocamento. 1x por descanso longo."],
+    [1,"Constituição Poderosa","Vantagem para encerrar Agarrado e conta como um tamanho maior para carga."]],
+    res: c => [{ key:"sp-giant", name:"Ancestralidade Gigante", max:prof(c.level), reset:"long" }].concat(c.level >= 5 ? [{ key:"sp-large", name:"Forma Grande", max:1, reset:"long" }] : []) },
+  "Halfling": { size:["Pequeno"], speed:9, traits:[
+    [1,"Bravura","Vantagem em salvaguardas contra Amedrontado."],
+    [1,"Agilidade Halfling","Pode atravessar o espaço de criaturas maiores que você."],
+    [1,"Sorte","Ao tirar 1 num teste de d20, rola de novo e usa o novo resultado."],
+    [1,"Furtividade Natural","Pode tentar se Esconder atrás de criaturas maiores que você."]] },
+  "Humano": { size:["Médio","Pequeno"], speed:9, traits:[
+    [1,"Engenhoso","Ganha Inspiração Heroica ao terminar um descanso longo."],
+    [1,"Habilidoso","Proficiência em uma perícia à sua escolha (marque na aba Ficha)."],
+    [1,"Versátil","Um talento de origem à sua escolha (adicione abaixo com “Nova característica”)."]] },
+  "Orc": { size:["Médio"], speed:9, traits:[
+    [1,"Ímpeto de Adrenalina", c => `Ação bônus: Disparada e ${prof(c.level)} PV temporários. Usos = bônus de proficiência por descanso curto ou longo.`],
+    [1,"Visão no Escuro","Enxerga no escuro até 36 m."],
+    [1,"Resistência Implacável","Ao cair a 0 PV sem morrer, fica com 1 PV. 1x por descanso longo."]],
+    res: c => [{ key:"sp-adren", name:"Ímpeto de Adrenalina", max:prof(c.level), reset:"short" }, { key:"sp-relent", name:"Resistência Implacável", max:1, reset:"long" }] },
+  "Tiefling": { size:["Médio","Pequeno"], speed:9, traits:[
+    [1,"Visão no Escuro","Enxerga no escuro até 18 m."],
+    [1,"Legado Infernal", c => lineageOf(c) ? `${c.lineage}: resistência a dano ${lineageOf(c).res}. ` + lineageText(c, "") : "Escolha Abissal, Ctônico ou Infernal nos dados do personagem: dá uma resistência, um truque e magias no 3º e 5º níveis."],
+    [1,"Presença Sobrenatural","Conhece o truque Taumaturgia."]] }
+};
+
+// antecedente: [atributos, talento, perícias, ferramenta]
+const BACKGROUNDS = {
+  "Acólito":[["int","wis","cha"],"magic:Clérigo",["insi","reli"],"suprimentos de caligrafia"],
+  "Andarilho":[["dex","wis","cha"],"lucky",["insi","stea"],"ferramentas de ladrão"],
+  "Artesão":[["str","dex","int"],"crafter",["inve","pers"],"uma ferramenta de artesão"],
+  "Artista":[["str","dex","cha"],"musician",["acro","perf"],"um instrumento musical"],
+  "Charlatão":[["dex","con","cha"],"skilled",["dece","slei"],"kit de falsificação"],
+  "Criminoso":[["dex","con","int"],"alert",["slei","stea"],"ferramentas de ladrão"],
+  "Eremita":[["con","wis","cha"],"healer",["medi","reli"],"kit de herbalismo"],
+  "Escriba":[["dex","int","wis"],"skilled",["inve","perc"],"suprimentos de caligrafia"],
+  "Fazendeiro":[["str","con","wis"],"tough",["anim","natu"],"ferramentas de carpinteiro"],
+  "Guarda":[["str","int","wis"],"alert",["athl","perc"],"um jogo"],
+  "Guia":[["dex","con","wis"],"magic:Druida",["stea","surv"],"ferramentas de cartógrafo"],
+  "Marinheiro":[["str","dex","wis"],"brawler",["acro","perc"],"ferramentas de navegador"],
+  "Mercador":[["con","int","cha"],"lucky",["anim","pers"],"ferramentas de navegador"],
+  "Nobre":[["str","int","cha"],"skilled",["hist","pers"],"um jogo"],
+  "Sábio":[["con","int","wis"],"magic:Mago",["arca","hist"],"suprimentos de caligrafia"],
+  "Soldado":[["str","dex","con"],"savage",["athl","inti"],"um jogo"]
+};
+const ORIGIN_FEATS = {
+  alert:["Alerta", c => `Soma o bônus de proficiência à iniciativa (já incluído) e, ao rolar iniciativa, pode trocar de lugar na ordem com um aliado.`],
+  crafter:["Artesão", "Proficiência com três ferramentas de artesão, 20% de desconto em itens não mágicos e fabricação rápida após um descanso longo."],
+  healer:["Curandeiro", "Com um kit de curandeiro, uma criatura gasta um Dado de Vida e recupera PV extras; refaz 1s ao rolar dados de cura."],
+  lucky:["Sortudo", c => `${prof(c.level)} Pontos de Sorte por descanso longo: gaste um para ter vantagem num teste de d20 ou impor desvantagem a um ataque contra você.`],
+  "magic":["Iniciado em Magia", "Dois truques e uma magia de 1º círculo da lista indicada; a magia pode ser conjurada 1x por descanso longo sem espaço."],
+  musician:["Músico", "Proficiência com três instrumentos; ao fim de um descanso, dá Inspiração Heroica a aliados que ouvirem sua música."],
+  savage:["Atacante Selvagem", "1x por turno, ao acertar com arma, rola os dados de dano duas vezes e usa o maior resultado."],
+  skilled:["Habilidoso", "Proficiência em três perícias ou ferramentas à sua escolha (marque as perícias na aba Ficha)."],
+  brawler:["Brigão de Taverna", "Golpe desarmado causa 1d4 + FOR, refaz 1s no dano, pode empurrar 1,5 m e improvisa armas com proficiência."],
+  tough:["Vigoroso", c => `+2 PV por nível (+${2 * c.level} no total; já somado no PV automático).`]
+};
+const featKeyOf = k => String(k || "").split(":")[0];
+
+/* ---------- linhagens e ancestralidades (2024) ---------- */
+const LINEAGE_SPELL_NOTE = "Da espécie: conjura 1x por descanso longo sem gastar espaço, ou com espaços de magia normalmente.";
+const LINEAGES = {
+  "Elfo": { label:"Linhagem élfica", opts:{
+    "Drow": { dv:36, spells:[[1,0,"Globos de Luz","Dancing Lights"],[3,1,"Fogo Feérico","Faerie Fire"],[5,2,"Escuridão","Darkness"]],
+      text:"Visão no escuro ampliada para 36 m." },
+    "Alto Elfo": { spells:[[1,0,"Prestidigitação","Prestidigitation"],[3,1,"Detectar Magia","Detect Magic"],[5,2,"Passo Nebuloso","Misty Step"]],
+      text:"Ao fim de um descanso longo, pode trocar o truque Prestidigitação por outro truque de mago." },
+    "Elfo da Floresta": { speed:10.5, spells:[[1,0,"Arte Druídica","Druidcraft"],[3,1,"Passos Longos","Longstrider"],[5,2,"Passar sem Rastro","Pass without Trace"]],
+      text:"Deslocamento de 10,5 m." } } },
+  "Gnomo": { label:"Linhagem gnômica", opts:{
+    "Gnomo da Floresta": { spells:[[1,0,"Ilusão Menor","Minor Illusion"],[1,1,"Falar com Animais","Speak with Animals","pb"]],
+      text:"Sempre tem Falar com Animais preparada e pode conjurá-la sem espaço um número de vezes igual ao bônus de proficiência por descanso longo." },
+    "Gnomo das Rochas": { spells:[[1,0,"Consertar","Mending"],[1,0,"Prestidigitação","Prestidigitation"]],
+      text:"Em 10 minutos, cria um pequeno engenho mecânico (CA 5, 1 PV) com um efeito simples, como acender uma luz, tocar uma música ou fazer barulho; até 3 por vez." } } },
+  "Tiefling": { label:"Legado infernal", opts:{
+    "Abissal": { res:"de veneno", spells:[[1,0,"Spray Venenoso","Poison Spray"],[3,1,"Raio Adoecedor","Ray of Sickness"],[5,2,"Imobilizar Pessoa","Hold Person"]] },
+    "Ctônico": { res:"necrótico", spells:[[1,0,"Toque Arrepiante","Chill Touch"],[3,1,"Vitalidade Falsa","False Life"],[5,2,"Raio do Enfraquecimento","Ray of Enfeeblement"]] },
+    "Infernal": { res:"de fogo", spells:[[1,0,"Raio de Fogo","Fire Bolt"],[3,1,"Repreensão Infernal","Hellish Rebuke"],[5,2,"Escuridão","Darkness"]] } } },
+  "Draconato": { label:"Dragão ancestral", opts:{
+    "Azul":{dmg:"elétrico"}, "Branco":{dmg:"de frio"}, "Bronze":{dmg:"elétrico"}, "Cobre":{dmg:"ácido"}, "Latão":{dmg:"de fogo"},
+    "Negro":{dmg:"ácido"}, "Ouro":{dmg:"de fogo"}, "Prata":{dmg:"de frio"}, "Verde":{dmg:"de veneno"}, "Vermelho":{dmg:"de fogo"} } },
+  "Golias": { label:"Ancestralidade gigante", opts:{
+    "Gigante das Nuvens": { text:"Salto das Nuvens: ação bônus para se teletransportar até 9 m para um espaço que você veja." },
+    "Gigante do Fogo": { text:"Queimadura do Fogo: ao acertar um ataque, causa +1d10 de dano de fogo." },
+    "Gigante do Gelo": { text:"Frio do Gelo: ao acertar um ataque, causa +1d6 de dano de frio e reduz o deslocamento do alvo em 3 m até o seu próximo turno." },
+    "Gigante da Colina": { text:"Queda da Colina: ao acertar uma criatura Grande ou menor, ela fica Caída." },
+    "Gigante da Pedra": { text:"Resistência da Pedra: reação ao sofrer dano para reduzi-lo em 1d12 + modificador de Constituição." },
+    "Gigante da Tempestade": { text:"Trovão da Tempestade: reação ao sofrer dano de uma criatura a até 18 m para causar 1d8 de dano trovejante a ela." } } }
+};
+const SPECIES_ALIASES = {
+  "drow":["Elfo","Drow"], "elfo negro":["Elfo","Drow"], "elfo drow":["Elfo","Drow"], "drow (elfo negro)":["Elfo","Drow"],
+  "alto elfo":["Elfo","Alto Elfo"], "elfo alto":["Elfo","Alto Elfo"], "elfo da floresta":["Elfo","Elfo da Floresta"], "elfo silvestre":["Elfo","Elfo da Floresta"],
+  "gnomo da floresta":["Gnomo","Gnomo da Floresta"], "gnomo das rochas":["Gnomo","Gnomo das Rochas"], "gnomo da rocha":["Gnomo","Gnomo das Rochas"],
+  "tiefling abissal":["Tiefling","Abissal"], "tiefling ctônico":["Tiefling","Ctônico"], "tiefling ctonico":["Tiefling","Ctônico"], "tiefling infernal":["Tiefling","Infernal"],
+  "draconato":["Draconato",""], "dragonborn":["Draconato",""], "goliath":["Golias",""], "anao":["Anão",""], "pequenino":["Halfling",""]
+};
+function resolveSpecies(v){
+  const t = String(v || "").trim(), low = t.toLowerCase();
+  if (SPECIES_ALIASES[low]) return SPECIES_ALIASES[low];
+  const k = Object.keys(SPECIES).find(x => x.toLowerCase() === low);
+  return [k || t, ""];
+}
+/* ---------- subclasses (D&D 2024, resumos próprios) ---------- */
+const SUB_SPELLS = "Tem magias de subclasse sempre preparadas, que não contam no limite; veja a tabela da subclasse no livro e adicione-as na aba Magias.";
+const wis = c => Math.max(1, cm(c,"wis")), cha = c => Math.max(1, cm(c,"cha"));
+const PSI_DICE = c => ({ n: byLvl(c.level,[[3,4],[5,6],[9,8],[13,10],[17,12]]), d: byLvl(c.level,[[3,6],[5,8],[11,10],[17,12]]) });
+const SUBCLASS_DATA = {
+  "Bárbaro": {
+    "Berserker": { al:["berserker","caminho do berserker","furioso"], feats:[
+      [3,"Frenesi", c => `Em Fúria e usando Ataque Imprudente, o primeiro acerto com Força no turno causa +${byLvl(c.level,[[1,2],[9,3],[16,4]])}d6 de dano.`],
+      [6,"Fúria Irracional","Em Fúria, é imune a Enfeitiçado e Amedrontado; entrar em Fúria encerra essas condições."],
+      [10,"Retaliação","Reação ao sofrer dano de uma criatura a até 1,5 m: faz um ataque corpo a corpo contra ela."],
+      [14,"Presença Intimidadora","Ação bônus: criaturas à sua escolha a até 9 m fazem salvaguarda de SAB ou ficam Amedrontadas por 1 minuto. 1x por descanso longo (ou gaste uma Fúria)."]],
+      res: c => c.level >= 14 ? [{ key:"sub-intim", name:"Presença Intimidadora", max:1, reset:"long" }] : [] },
+    "Coração Selvagem": { al:["coracao selvagem","wild heart","caminho do coracao selvagem"], feats:[
+      [3,"Orador dos Animais","Conjura Sentido Animal e Falar com Animais como rituais (SAB)."],
+      [3,"Fúria da Natureza","Ao entrar em Fúria, escolha: Urso (resistência a todo dano, exceto força, necrótico, psíquico e radiante), Águia (Disparada e Desengajar como ação bônus) ou Lobo (aliados têm vantagem contra inimigos a até 1,5 m de você)."],
+      [6,"Aspecto da Natureza","Após um descanso longo, escolha: Coruja (visão no escuro de 18 m), Pantera (deslocamento de escalada) ou Salmão (deslocamento de natação)."],
+      [10,"Orador da Natureza","Conjura Comunhão com a Natureza como ritual."],
+      [14,"Poder da Natureza","Ao entrar em Fúria, escolha: Falcão (voo), Leão (inimigos ao seu lado têm desvantagem ao atacar outros) ou Carneiro (seus acertos podem derrubar alvos Grandes ou menores)."]] },
+    "Árvore do Mundo": { al:["arvore do mundo","world tree","caminho da arvore do mundo"], feats:[
+      [3,"Vitalidade da Árvore", c => `Ao entrar em Fúria, ganha ${c.level} PV temporários; no início de cada turno em Fúria, um aliado a até 3 m ganha ${byLvl(c.level,[[1,2],[9,3],[16,4]])}d6 PV temporários.`],
+      [6,"Galhos da Árvore","Reação em Fúria: uma criatura a até 9 m faz salvaguarda de FOR ou é teleportada para perto de você, com deslocamento 0 até o fim do turno."],
+      [10,"Raízes Golpeadoras","Alcance +3 m com armas Pesadas ou Versáteis; pode aplicar Empurrar ou Derrubar além da maestria da arma."],
+      [14,"Viajar pela Árvore","Ação bônus em Fúria: teleporte de até 18 m; 1x por Fúria, 45 m levando até 6 criaturas."]] },
+    "Zelote": { al:["zelote","zealot","caminho do zelote","fanatico"], feats:[
+      [3,"Fúria Divina", c => `Em Fúria, o primeiro acerto no turno causa +1d6 + ${Math.floor(c.level/2)} de dano necrótico ou radiante.`],
+      [3,"Guerreiro dos Deuses", c => `Reserva de ${byLvl(c.level,[[3,4],[6,5],[12,6],[17,7]])}d12 de cura: ação bônus para gastar dados e recuperar PV. Volta no descanso longo.`],
+      [6,"Foco Fanático","1x por Fúria, refaz uma salvaguarda que falhou com bônus igual ao dano da Fúria."],
+      [10,"Presença Zelosa","Ação bônus: até 10 aliados ganham vantagem em ataques e salvaguardas até o seu próximo turno. 1x por descanso longo (ou gaste uma Fúria)."],
+      [14,"Fúria dos Deuses","Ao entrar em Fúria, assume forma divina por 1 minuto: voo, resistência a necrótico, psíquico e radiante, e pode salvar um aliado de cair a 0 PV. 1x por descanso longo."]],
+      res: c => [{ key:"sub-zeal", name:"Guerreiro dos Deuses (d12)", max: byLvl(c.level,[[3,4],[6,5],[12,6],[17,7]]), reset:"long" }].concat(c.level >= 10 ? [{ key:"sub-zpres", name:"Presença Zelosa", max:1, reset:"long" }] : []) }
+  },
+  "Bardo": {
+    "Colégio da Dança": { al:["danca","colegio da danca","dance"], feats:[
+      [3,"Passos Deslumbrantes","Sem armadura nem escudo: CA = 10 + DES + CAR, vantagem em Atuação dançando, golpes desarmados com DES e dano igual ao dado de Inspiração; ao gastar Inspiração, pode fazer um golpe desarmado."],
+      [6,"Movimento Inspirador","Reação quando um inimigo termina o turno perto: gaste Inspiração para se mover metade do deslocamento, e um aliado também."],
+      [6,"Passos em Sintonia","Ao rolar iniciativa, gaste Inspiração para somar o resultado à sua iniciativa e à de aliados próximos."],
+      [14,"Evasão Conduzida","Você e aliados a até 1,5 m têm Evasão contra efeitos de salvaguarda de DES."]] },
+    "Colégio do Glamour": { al:["glamour","colegio do glamour"], feats:[
+      [3,"Magia Sedutora","Sempre tem Enfeitiçar Pessoa e Imagem Espelhada preparadas; após conjurar encantamento ou ilusão com espaço, pode deixar uma criatura Enfeitiçada ou Amedrontada. 1x por descanso longo (ou gaste Inspiração)."],
+      [3,"Manto de Inspiração","Ação bônus: gaste Inspiração; aliados recebem PV temporários iguais ao dobro do resultado e podem se mover sem provocar ataques."],
+      [6,"Manto de Majestade","Sempre tem Comando preparada; por 1 minuto, conjura Comando como ação bônus sem espaço. 1x por descanso longo (ou espaço de 3º+)."],
+      [14,"Majestade Inquebrável","Ação bônus por 1 minuto: quem tentar atacá-lo faz salvaguarda de CAR ou precisa escolher outro alvo."]] },
+    "Colégio do Conhecimento": { al:["conhecimento","colegio do conhecimento","lore","saber"], feats:[
+      [3,"Proficiências Adicionais","Proficiência em três perícias à sua escolha."],
+      [3,"Palavras Cortantes","Reação: gaste Inspiração e subtraia o resultado de um ataque, teste ou dano de uma criatura a até 18 m."],
+      [6,"Descobertas Mágicas","Duas magias das listas de Clérigo, Druida ou Mago, sempre preparadas."],
+      [14,"Perícia Inigualável","Ao falhar num teste de atributo ou ataque, gaste Inspiração para somar o resultado; se ainda falhar, não gasta."]] },
+    "Colégio da Bravura": { al:["bravura","colegio da bravura","valor","valentia"], feats:[
+      [3,"Inspiração em Combate","Quem tem sua Inspiração pode somá-la ao dano de um acerto ou à CA contra um ataque."],
+      [3,"Treinamento Marcial","Proficiência com armas marciais, armadura média e escudos; pode usar uma arma como foco de conjuração."],
+      [6,"Ataque Extra","Ataca duas vezes com a ação de Ataque; pode trocar um dos ataques por um truque."],
+      [14,"Magia de Batalha","Após conjurar uma magia com a ação de Magia, pode fazer um ataque com arma como ação bônus."]] }
+  },
+  "Bruxo": {
+    "Arquifada": { al:["arquifada","archfey","patrono arquifada"], feats:[
+      [3,"Magias do Patrono", SUB_SPELLS],
+      [3,"Passos da Fada", c => `Conjura Passo Nebuloso sem espaço ${cha(c)}x por descanso longo, com um efeito extra: PV temporários (Passo Revigorante) ou desvantagem em ataques de uma criatura (Passo Provocador).`],
+      [6,"Fuga Nebulosa","Reação ao sofrer dano: Passo Nebuloso; novas opções de efeito: ficar Invisível ou causar dano psíquico."],
+      [10,"Defesas Encantadoras","Imune a Enfeitiçado; reação ao ser atingido para reduzir o dano e devolver parte como dano psíquico."],
+      [14,"Magia Enfeitiçante","Ao conjurar encantamento ou ilusão com espaço, pode conjurar Passo Nebuloso junto, sem espaço."]],
+      res: c => [{ key:"sub-fey", name:"Passos da Fada", max: cha(c), reset:"long" }] },
+    "Celestial": { al:["celestial","patrono celestial"], feats:[
+      [3,"Magias do Patrono", SUB_SPELLS],
+      [3,"Luz Curativa", c => `Reserva de ${1 + c.level}d6: ação bônus para curar uma criatura a até 18 m gastando até ${cha(c)} dados. Volta no descanso longo.`],
+      [6,"Alma Radiante","Resistência a dano radiante; soma CAR ao dano de uma magia radiante ou de fogo por turno."],
+      [10,"Resiliência Celestial", c => `Ao terminar um descanso ou usar Astúcia Mágica, ganha ${c.level + cm(c,"cha")} PV temporários; até 5 aliados ganham metade.`],
+      [14,"Vingança Abrasadora","Quando você ou um aliado faz um teste contra a morte, ele recupera metade dos PV e inimigos próximos sofrem dano radiante e ficam Cegos. 1x por descanso longo."]],
+      res: c => [{ key:"sub-heal", name:"Luz Curativa (d6)", max: 1 + c.level, reset:"long" }] },
+    "Corruptor (Fiend)": { al:["corruptor","infernal","fiend","demonio","patrono corruptor","o corruptor"], feats:[
+      [3,"Magias do Patrono", SUB_SPELLS],
+      [3,"Bênção do Sombrio", c => `Ao reduzir um inimigo a 0 PV (ou alguém fazer isso perto de você), ganha ${Math.max(1, cm(c,"cha") + c.level)} PV temporários.`],
+      [6,"Sorte do Sombrio", c => `Soma 1d10 a um teste de atributo ou salvaguarda. ${cha(c)}x por descanso longo.`],
+      [10,"Resiliência Infernal","Após um descanso, escolha um tipo de dano (exceto força) para ter resistência."],
+      [14,"Arremessar pelo Inferno","Ao acertar um ataque, o alvo some por um instante e sofre 8d10 de dano psíquico. 1x por descanso longo (ou gaste um espaço de Pacto)."]],
+      res: c => c.level >= 6 ? [{ key:"sub-luck", name:"Sorte do Sombrio", max: cha(c), reset:"long" }] : [] },
+    "Grande Antigo": { al:["grande antigo","great old one","antigo"], feats:[
+      [3,"Magias do Patrono", SUB_SPELLS],
+      [3,"Mente Desperta","Ação bônus: cria um elo telepático com uma criatura a até 9 m."],
+      [3,"Feitiços Psíquicos","Pode trocar o tipo de dano das suas magias de bruxo para psíquico; encantamentos e ilusões não precisam de componentes verbais nem somáticos."],
+      [6,"Combatente Clarividente","Com o elo telepático, a criatura faz salvaguarda de SAB; se falhar, você tem vantagem contra ela e ela desvantagem contra você por 1 minuto."],
+      [10,"Maldição Mística","Sempre tem Maldição (Hex) preparada; o alvo também tem desvantagem em salvaguardas do atributo escolhido."],
+      [10,"Escudo de Pensamentos","Resistência a dano psíquico; quem lhe causar dano psíquico sofre o mesmo dano."],
+      [14,"Criar Servo","Conjura Invocar Aberração sem componentes; a criatura chega com PV temporários."]] }
+  },
+  "Clérigo": {
+    "Domínio da Vida": { al:["vida","dominio da vida","life"], feats:[
+      [3,"Magias de Domínio", SUB_SPELLS],
+      [3,"Discípulo da Vida","Magias de cura com espaço curam +2 + o círculo do espaço."],
+      [3,"Preservar a Vida", c => `Canalizar Divindade: distribui ${5 * c.level} PV entre criaturas a até 9 m (até metade do PV máximo de cada).`],
+      [6,"Curandeiro Abençoado","Ao curar outra criatura com magia de espaço, você recupera 2 + o círculo do espaço."],
+      [17,"Cura Suprema","Os dados das suas curas sempre tiram o valor máximo."]] },
+    "Domínio da Luz": { al:["luz","dominio da luz","light"], feats:[
+      [3,"Magias de Domínio", SUB_SPELLS],
+      [3,"Radiância da Aurora", c => `Canalizar Divindade: dissipa escuridão mágica e causa 2d10 + ${c.level} de dano radiante a inimigos a até 9 m (CON reduz à metade).`],
+      [3,"Clarão Protetor", c => `Reação: impõe desvantagem num ataque contra você ou um aliado a até 9 m. ${wis(c)}x por descanso longo.`],
+      [6,"Clarão Protetor Aprimorado","Recupera os usos no descanso curto; o alvo protegido também ganha 2d6 + SAB de PV temporários."],
+      [17,"Coroa de Luz","Ação: por 1 minuto, emite luz forte; inimigos nela têm desvantagem em salvaguardas contra sua Radiância e magias de fogo ou radiantes."]],
+      res: c => [{ key:"sub-flare", name:"Clarão Protetor", max: wis(c), reset: c.level >= 6 ? "short" : "long" }] },
+    "Domínio da Trapaça": { al:["trapaca","dominio da trapaca","trickery","enganacao"], feats:[
+      [3,"Magias de Domínio", SUB_SPELLS],
+      [3,"Bênção do Trapaceiro","Toque: uma criatura ganha vantagem em testes de Furtividade."],
+      [3,"Invocar Duplicidade","Canalizar Divindade: cria uma cópia ilusória sua; pode conjurar magias a partir dela e tem vantagem contra alvos perto de vocês dois."],
+      [6,"Transposição do Trapaceiro","Ao mover a cópia, pode trocar de lugar com ela."],
+      [17,"Duplicidade Aprimorada","Aliados também ganham vantagem perto da cópia; quando ela some, você ou um aliado recupera PV iguais ao seu nível."]] },
+    "Domínio da Guerra": { al:["guerra","dominio da guerra","war"], feats:[
+      [3,"Magias de Domínio", SUB_SPELLS],
+      [3,"Golpe Guiado","Canalizar Divindade: +10 num ataque seu ou de um aliado a até 9 m que acabou de errar."],
+      [3,"Sacerdote da Guerra", c => `Ação bônus: um ataque com arma ou golpe desarmado. ${wis(c)}x por descanso curto ou longo.`],
+      [6,"Bênção do Deus da Guerra","Canalizar Divindade para conjurar Escudo da Fé ou Arma Espiritual sem espaço e sem concentração."],
+      [17,"Avatar da Batalha","Resistência a dano contundente, cortante e perfurante."]],
+      res: c => [{ key:"sub-warpriest", name:"Sacerdote da Guerra", max: wis(c), reset:"short" }] }
+  },
+  "Druida": {
+    "Círculo da Terra": { al:["terra","circulo da terra","land"], feats:[
+      [3,"Magias do Círculo","Após um descanso longo, escolha um terreno (árido, polar, temperado ou tropical); ele define magias sempre preparadas (veja a tabela no livro)."],
+      [3,"Auxílio da Terra", c => `Ação de Magia, gastando Forma Selvagem: esfera de 3 m causa ${byLvl(c.level,[[3,2],[10,3],[14,4]])}d6 de dano necrótico (CON) e uma criatura recupera ${byLvl(c.level,[[3,2],[10,3],[14,4]])}d6 PV.`],
+      [6,"Recuperação Natural", c => `1x por descanso longo, conjura uma magia do círculo sem espaço; após um descanso curto, recupera espaços que somem até ${Math.ceil(c.level/2)} círculos.`],
+      [10,"Proteção da Natureza","Imune a Envenenado e resistência ao tipo de dano ligado ao seu terreno."],
+      [14,"Santuário da Natureza","Gastando Forma Selvagem: árvores espectrais dão meia cobertura e resistência a você e aliados."]] },
+    "Círculo da Lua": { al:["lua","circulo da lua","moon"], feats:[
+      [3,"Formas do Círculo", c => `Forma Selvagem em feras de ND até ${Math.max(1, Math.floor(c.level/3))}; na forma, CA mínima 13 + SAB e ${3 * c.level} PV temporários.`],
+      [3,"Magias do Círculo", SUB_SPELLS],
+      [6,"Formas do Círculo Aprimoradas","Ataques na forma podem causar dano radiante; soma SAB às salvaguardas de CON."],
+      [10,"Passo do Luar", c => `Ação bônus: teleporte de 9 m e vantagem no próximo ataque. ${wis(c)}x por descanso longo (ou gaste um espaço de 2º+).`],
+      [14,"Forma Lunar","1x por turno, +2d10 de dano radiante; o Passo do Luar pode levar outra criatura."]],
+      res: c => c.level >= 10 ? [{ key:"sub-moonstep", name:"Passo do Luar", max: wis(c), reset:"long" }] : [] },
+    "Círculo do Mar": { al:["mar","circulo do mar","sea"], feats:[
+      [3,"Magias do Círculo", SUB_SPELLS],
+      [3,"Ira do Mar", c => `Gastando Forma Selvagem: aura de 1,5 m por 10 minutos; ação bônus para causar ${wis(c)}d6 de dano de frio (CON) e empurrar 4,5 m.`],
+      [6,"Afinidade Aquática","A aura passa a 3 m; ganha deslocamento de natação."],
+      [10,"Nascido da Tempestade","Com a Ira do Mar ativa: voo e resistência a frio, elétrico e trovejante."],
+      [14,"Dádiva Oceânica","Pode criar a aura em um aliado em vez de em você (ou nos dois, gastando dois usos)."]] },
+    "Círculo das Estrelas": { al:["estrelas","circulo das estrelas","stars"], feats:[
+      [3,"Mapa Estelar", c => `Sempre tem Orientação e Raio Guia preparadas; conjura Raio Guia sem espaço ${wis(c)}x por descanso longo.`],
+      [3,"Forma Estrelada", c => `Gastando Forma Selvagem: Arqueiro (ação bônus: 1d8 + ${cm(c,"wis")} radiante), Cálice (curas curam +1d8 + SAB a outra criatura) ou Dragão (d20 de 9 ou menos conta como 10 em INT, SAB e concentração).`],
+      [6,"Presságio Cósmico", c => `Após um descanso longo, define Bem ou Mal; reação para somar ou subtrair 1d6 de um teste de d20. ${wis(c)}x por descanso longo.`],
+      [10,"Constelações Cintilantes","Os dados da Forma Estrelada viram 2d8, o Dragão dá voo e você pode trocar de constelação a cada turno."],
+      [14,"Cheio de Estrelas","Na Forma Estrelada, resistência a dano contundente, cortante e perfurante."]],
+      res: c => [{ key:"sub-starmap", name:"Raio Guia grátis", max: wis(c), reset:"long" }].concat(c.level >= 6 ? [{ key:"sub-omen", name:"Presságio Cósmico", max: wis(c), reset:"long" }] : []) }
+  },
+  "Feiticeiro": {
+    "Feitiçaria Aberrante": { al:["aberrante","feiticaria aberrante","aberrant","mente aberrante"], feats:[
+      [3,"Magias Psiônicas", SUB_SPELLS],
+      [3,"Fala Telepática","Ação bônus: elo telepático com uma criatura a até 9 m."],
+      [6,"Feitiçaria Psiônica","Pode conjurar as magias psiônicas gastando Pontos de Feitiçaria, sem componentes verbais ou somáticos."],
+      [6,"Defesas Psíquicas","Resistência a dano psíquico e vantagem em salvaguardas contra Enfeitiçado e Amedrontado."],
+      [14,"Revelação na Carne","Ação bônus, gastando pontos: ver invisível, voar, nadar e respirar na água, ou se espremer por espaços pequenos."],
+      [18,"Implosão Distorcida","Teleporte de até 36 m; criaturas perto do ponto de saída sofrem 3d10 de dano de força e são puxadas. 1x por descanso longo (ou 5 pontos)."]] },
+    "Feitiçaria Mecânica": { al:["mecanica","feiticaria mecanica","clockwork","alma mecanica"], feats:[
+      [3,"Magias Mecânicas", SUB_SPELLS],
+      [3,"Restaurar o Equilíbrio", c => `Reação: cancela a vantagem ou desvantagem de uma rolagem a até 18 m. ${cha(c)}x por descanso longo.`],
+      [6,"Bastião da Lei","Gaste 1 a 5 Pontos de Feitiçaria: uma criatura ganha uma proteção de d8s que absorve dano."],
+      [14,"Transe da Ordem","Ação bônus por 1 minuto: resultados de 9 ou menos no d20 contam como 10. 1x por descanso longo (ou 5 pontos)."],
+      [18,"Cavalgada Mecânica","Ação: cura até 100 PV divididos, conserta objetos e encerra magias de até 6º círculo numa área. 1x por descanso longo (ou 7 pontos)."]],
+      res: c => [{ key:"sub-balance", name:"Restaurar o Equilíbrio", max: cha(c), reset:"long" }] },
+    "Feitiçaria Dracônica": { al:["draconica","feiticaria draconica","draconic","linhagem draconica"], hpPerLevelFrom3:true, feats:[
+      [3,"Resiliência Dracônica", c => `+${c.level} PV máximos (já somado no PV automático); sem armadura, CA = 10 + DES + CAR.`],
+      [3,"Magias Dracônicas", SUB_SPELLS],
+      [6,"Afinidade Elemental","Escolha um tipo de dano (ácido, elétrico, fogo, frio ou veneno): resistência a ele e soma CAR ao dano de magias desse tipo."],
+      [14,"Asas de Dragão","Ação bônus: asas por 1 hora, com deslocamento de voo de 18 m. 1x por descanso longo (ou 3 pontos)."],
+      [18,"Companheiro Dracônico","Conjura Invocar Dragão sem componentes, 1x por descanso longo sem espaço, podendo dispensar a concentração."]] },
+    "Magia Selvagem": { al:["magia selvagem","selvagem","wild magic","feiticaria selvagem"], feats:[
+      [3,"Surto de Magia Selvagem","Após conjurar uma magia com espaço, role um d20; num 20, role na tabela de Surto de Magia Selvagem."],
+      [3,"Marés do Caos","Ganha vantagem num teste de d20. Recupera ao sofrer um Surto ou após um descanso longo."],
+      [6,"Dobrar a Sorte","Reação: gaste 1 Ponto de Feitiçaria para somar ou subtrair 1d4 do teste de d20 de uma criatura."],
+      [14,"Caos Controlado","Ao rolar na tabela de Surto, role duas vezes e escolha."],
+      [18,"Surto Domado","Após conjurar uma magia com espaço, escolha um efeito da tabela de Surto (exceto o último). 1x por descanso longo."]],
+      res: c => [{ key:"sub-tides", name:"Marés do Caos", max:1, reset:"long" }] }
+  },
+  "Guerreiro": {
+    "Mestre de Batalha": { al:["mestre de batalha","battle master","mestre de combate"], feats:[
+      [3,"Superioridade em Combate", c => `${byLvl(c.level,[[3,4],[7,5],[15,6]])} Dados de Superioridade (d${byLvl(c.level,[[3,8],[10,10],[18,12]])}) para manobras; conhece ${byLvl(c.level,[[3,3],[7,5],[10,7],[15,9]])} manobras. CD = 8 + FOR ou DES + prof. Recupera no descanso curto.`],
+      [3,"Estudante da Guerra","Proficiência com uma ferramenta de artesão e uma perícia da lista do Guerreiro."],
+      [7,"Conheça seu Inimigo","Ação bônus: descobre imunidades, resistências e vulnerabilidades de uma criatura. 1x por descanso longo (ou gaste um Dado de Superioridade)."],
+      [10,"Superioridade em Combate Aprimorada","Os Dados de Superioridade viram d10."],
+      [15,"Implacável","1x por turno, ao usar uma manobra, pode rolar 1d8 em vez de gastar um dado."],
+      [18,"Superioridade em Combate Suprema","Os Dados de Superioridade viram d12."]],
+      res: c => [{ key:"sub-sup", name:"Dados de Superioridade", max: byLvl(c.level,[[3,4],[7,5],[15,6]]), reset:"short" }] },
+    "Campeão": { al:["campeao","champion"], feats:[
+      [3,"Crítico Aprimorado","Seus ataques com arma e golpes desarmados são críticos com 19 ou 20."],
+      [3,"Atleta Notável","Vantagem em iniciativa e Atletismo; após um crítico, pode se mover metade do deslocamento sem provocar ataques."],
+      [7,"Estilo de Luta Adicional","Mais um talento de Estilo de Luta."],
+      [10,"Guerreiro Heroico","Em combate, no início do seu turno, ganha Inspiração Heroica se não tiver."],
+      [15,"Crítico Superior","Críticos com 18, 19 ou 20."],
+      [18,"Sobrevivente","Vantagem em testes contra a morte (18+ conta como 20); com metade ou menos dos PV, recupera 5 + CON no início do turno."]] },
+    "Cavaleiro Místico": { al:["cavaleiro mistico","eldritch knight","cavaleiro arcano"], caster:"third", feats:[
+      [3,"Conjuração","Magias de mago usando Inteligência, como um terço de conjurador (use “Pela classe” na aba Magias)."],
+      [3,"Vínculo com Arma","Vincula até duas armas; não pode ser desarmado delas e pode invocá-las para a mão como ação bônus."],
+      [7,"Magia de Guerra","Ao usar a ação de Ataque, pode trocar um ataque por um truque."],
+      [10,"Golpe Místico","Ao acertar com arma, o alvo tem desvantagem na próxima salvaguarda contra sua magia."],
+      [15,"Investida Arcana","Ao usar Surto de Ação, pode se teletransportar até 9 m."],
+      [18,"Magia de Guerra Aprimorada","Pode trocar dois ataques por uma magia de 1º ou 2º círculo."]] },
+    "Guerreiro Psíquico": { al:["guerreiro psiquico","psi warrior","psiquico"], feats:[
+      [3,"Poder Psiônico", c => { const p = PSI_DICE(c); return `${p.n} Dados de Energia Psiônica (d${p.d}): Campo Protetor (reação, reduz dano), Golpe Psiônico (dano de força extra ao acertar) e Movimento Telecinético. Recupera 1 no curto e todos no longo.`; }],
+      [7,"Adepto Telecinético","Salto Psíquico (voo por um turno) e Empurrão Telecinético (empurra ou derruba quem você acerta)."],
+      [10,"Mente Protegida","Resistência a dano psíquico; gaste um dado para encerrar Enfeitiçado ou Amedrontado em si."],
+      [15,"Baluarte de Força","Ação bônus: até INT criaturas ganham meia cobertura por 1 minuto. 1x por descanso longo (ou gaste um dado)."],
+      [18,"Mestre Telecinético","Conjura Telecinésia (INT); enquanto concentra nela, pode atacar como ação bônus."]],
+      res: c => [{ key:"sub-psi", name:"Energia Psiônica", max: PSI_DICE(c).n, reset:"short1" }] }
+  },
+  "Ladino": {
+    "Trapaceiro Arcano": { al:["trapaceiro arcano","arcane trickster","trapaceiro"], caster:"third", feats:[
+      [3,"Conjuração","Magias de mago usando Inteligência, como um terço de conjurador (use “Pela classe” na aba Magias); conhece Mãos Mágicas."],
+      [3,"Prestidigitação com Mãos Mágicas","Sua Mão Mágica fica invisível e pode roubar, usar ferramentas de ladrão e fazer testes de Prestidigitação."],
+      [9,"Emboscada Mágica","Se estiver Invisível ou escondido, criaturas têm desvantagem nas salvaguardas contra suas magias."],
+      [13,"Trapaceiro Versátil","Pode usar o Golpe Astuto “Derrubar” em uma criatura perto da sua Mão Mágica."],
+      [17,"Ladrão de Magias","Reação ao resistir a uma magia: rouba o conhecimento dela por 8 horas. 1x por descanso longo."]] },
+    "Assassino": { al:["assassino","assassin"], feats:[
+      [3,"Assassinar", c => `Vantagem na iniciativa; no 1º turno, vantagem contra quem ainda não agiu, e o Ataque Furtivo causa +${c.level} de dano.`],
+      [3,"Ferramentas de Assassino","Proficiência com kit de disfarce e kit de venenos."],
+      [9,"Especialista em Infiltração","Imita voz e escrita de outras pessoas; Mira Firme não zera seu deslocamento."],
+      [13,"Envenenar Armas","O Golpe Astuto “Envenenar” também causa 2d6 de dano de veneno, ignorando resistência."],
+      [17,"Golpe Mortal","No 1º turno do combate, ao acertar, o alvo faz salvaguarda de CON ou sofre o dobro do dano."]] },
+    "Lâmina da Alma": { al:["lamina da alma","soulknife","lamina psiquica"], feats:[
+      [3,"Poder Psiônico", c => { const p = PSI_DICE(c); return `${p.n} Dados de Energia Psiônica (d${p.d}): Talento Psíquico (soma um dado a um teste de perícia que falhou) e Sussurros Psíquicos (telepatia). Recupera 1 no curto e todos no longo.`; }],
+      [3,"Lâminas Psíquicas","Cria lâminas de energia: 1d6 psíquico, Acuidade, arremesso de 18 m; ação bônus para uma segunda lâmina de 1d4."],
+      [9,"Lâminas da Alma","Ataque Teleguiado (soma um dado a um ataque que errou) e Teleporte Psíquico (arremessa a lâmina e se teletransporta)."],
+      [13,"Véu Psíquico","Fica Invisível por 1 hora. 1x por descanso longo (ou gaste um dado)."],
+      [17,"Rasgar a Mente","Ao causar Ataque Furtivo com as lâminas, o alvo faz salvaguarda de SAB ou fica Atordoado. 1x por descanso longo (ou 3 dados)."]],
+      res: c => [{ key:"sub-psi", name:"Energia Psiônica", max: PSI_DICE(c).n, reset:"short1" }] },
+    "Ladrão": { al:["ladrao","thief"], feats:[
+      [3,"Mãos Rápidas","A Ação Ardilosa também permite Prestidigitação, Usar um Objeto ou usar ferramentas de ladrão."],
+      [3,"Trabalho de Segundo Andar","Deslocamento de escalada igual ao normal; usa DES para calcular o salto."],
+      [9,"Furtividade Suprema","Novo Golpe Astuto: atacar sem deixar de estar escondido."],
+      [13,"Usar Dispositivo Mágico","Sintoniza até 4 itens mágicos, pode economizar cargas e usar pergaminhos de magia."],
+      [17,"Reflexos de Ladrão","Faz dois turnos na primeira rodada de combate."]] }
+  },
+  "Mago": {
+    "Abjurador": { al:["abjurador","abjuracao","abjurer","abjuration"], feats:[
+      [3,"Sábio da Abjuração","Copia duas magias de abjuração de graça; ganha mais uma a cada nível de mago."],
+      [3,"Proteção Arcana", c => `Ao conjurar abjuração com espaço, cria uma proteção com ${2 * c.level + cm(c,"int")} PV que absorve dano em você.`],
+      [6,"Proteção Projetada","Reação: sua Proteção Arcana absorve dano de um aliado a até 9 m."],
+      [10,"Quebra-Magias","Sempre tem Contramágica e Dissipar Magia preparadas; Dissipar como ação bônus e soma prof. aos testes."],
+      [14,"Resistência a Magia","Vantagem em salvaguardas contra magias e resistência ao dano delas."]] },
+    "Adivinhador": { al:["adivinhador","adivinhacao","diviner","divination"], feats:[
+      [3,"Sábio da Adivinhação","Copia duas magias de adivinhação de graça; ganha mais uma a cada nível de mago."],
+      [3,"Presságio", c => `Após um descanso longo, role ${c.level >= 14 ? 3 : 2} d20 e anote; pode trocar qualquer teste de d20 visível por um desses valores.`],
+      [6,"Adivinhação Especialista","Ao conjurar adivinhação de 2º+, recupera um espaço de círculo menor."],
+      [10,"O Terceiro Olho","Ação bônus: visão no escuro de 36 m, ver o Etéreo, ler qualquer idioma ou ver invisível."],
+      [14,"Presságio Maior","Rola três d20 no Presságio."]],
+      res: c => [{ key:"sub-portent", name:"Presságio", max: c.level >= 14 ? 3 : 2, reset:"long" }] },
+    "Evocador": { al:["evocador","evocacao","evoker","evocation"], feats:[
+      [3,"Sábio da Evocação","Copia duas magias de evocação de graça; ganha mais uma a cada nível de mago."],
+      [3,"Truque Potente","Quando um truque de dano erra ou o alvo passa na salvaguarda, ele ainda sofre metade do dano."],
+      [6,"Esculpir Magias","Protege 1 + o círculo da magia criaturas dos efeitos das suas evocações."],
+      [10,"Evocação Fortalecida", c => `Soma INT (${sg(cm(c,"int"))}) a uma rolagem de dano das suas magias de evocação.`],
+      [14,"Sobrecarga","Maximiza o dano de uma magia de 1º a 5º círculo; usos repetidos antes de um descanso longo causam dano necrótico em você."]] },
+    "Ilusionista": { al:["ilusionista","ilusao","illusionist","illusion"], feats:[
+      [3,"Sábio da Ilusão","Copia duas magias de ilusão de graça; ganha mais uma a cada nível de mago."],
+      [3,"Ilusões Aprimoradas","Ilusões sem componente verbal e com +18 m de alcance; Ilusão Menor cria som e imagem e sai como ação bônus."],
+      [6,"Criaturas Fantasmagóricas","Sempre tem Invocar Fera e Invocar Fada preparadas e pode conjurá-las como ilusões, 1x cada sem espaço."],
+      [10,"Eu Ilusório","Reação: um ataque contra você erra automaticamente. 1x por descanso curto (ou gaste um espaço de 2º+)."],
+      [14,"Realidade Ilusória","Torna real por 1 minuto um objeto não mágico da sua ilusão."]],
+      res: c => c.level >= 10 ? [{ key:"sub-illself", name:"Eu Ilusório", max:1, reset:"short" }] : [] }
+  },
+  "Monge": {
+    "Misericórdia": { al:["misericordia","mercy","guerreiro da misericordia","caminho da misericordia"], feats:[
+      [3,"Mão do Dano","1x por turno, ao acertar golpe desarmado, gaste 1 Foco: + dado de Artes Marciais + SAB de dano necrótico."],
+      [3,"Mão da Cura","Gaste 1 Foco (ou troque um golpe da Rajada): cura dado de Artes Marciais + SAB."],
+      [3,"Instrumentos da Misericórdia","Proficiência em Intuição, Medicina e kit de herbalismo."],
+      [6,"Toque do Médico","Mão do Dano também deixa Envenenado; Mão da Cura encerra uma condição."],
+      [11,"Rajada de Cura e Dano", c => `Na Rajada de Golpes, troca golpes por Mão da Cura sem custo; Mão do Dano sem Foco ${wis(c)}x por descanso longo.`],
+      [17,"Mão da Misericórdia Suprema","Gaste 5 Foco para reviver quem morreu nas últimas 24 horas. 1x por descanso longo."]] },
+    "Sombra": { al:["sombra","shadow","guerreiro da sombra","caminho da sombra"], feats:[
+      [3,"Artes Sombrias","Gaste 1 Foco para conjurar Escuridão e enxergar através dela; visão no escuro de 18 m; conhece Ilusão Menor."],
+      [6,"Passo Sombrio","Ação bônus: teleporte de 18 m entre pontos de penumbra ou escuridão, com vantagem no próximo ataque corpo a corpo."],
+      [11,"Passo Sombrio Aprimorado","Gaste 1 Foco para usar o Passo Sombrio em qualquer luz e fazer um golpe desarmado logo depois."],
+      [17,"Manto de Sombras","Gaste 3 Foco: Invisível em penumbra ou escuridão por 1 minuto e atravessa criaturas."]] },
+    "Elementos": { al:["elementos","elements","guerreiro dos elementos","caminho dos elementos"], feats:[
+      [3,"Sintonia Elemental","Gaste 1 Foco: por 10 minutos, golpes desarmados com +3 m de alcance, dano elemental e podem empurrar ou puxar 3 m."],
+      [3,"Manipular Elementos","Conhece o truque Elementalismo."],
+      [6,"Explosão Elemental","Gaste 2 Foco: esfera de 6 m a até 36 m; salvaguarda de DES ou três dados de Artes Marciais de dano elemental."],
+      [11,"Passada dos Elementos","Com a Sintonia ativa, ganha voo e natação."],
+      [17,"Epítome Elemental","Com a Sintonia: resistência a um tipo de dano, Passo do Vento causa dano e golpes causam um dado extra."]] },
+    "Mão Aberta": { al:["mao aberta","open hand","guerreiro da mao aberta","caminho da mao aberta"], feats:[
+      [3,"Técnica da Mão Aberta","Acertos da Rajada de Golpes podem: impedir reações (Atordoar), empurrar 4,5 m (FOR) ou derrubar (DES)."],
+      [6,"Integridade do Corpo", c => `Ação bônus: cura dado de Artes Marciais + SAB. ${wis(c)}x por descanso longo.`],
+      [11,"Passo Ligeiro","Pode usar Passo do Vento junto com outra ação bônus."],
+      [17,"Palma Vibrante","Gaste 4 Foco ao acertar: depois, pode encerrar as vibrações para causar 10d12 de dano de força (CON reduz à metade)."]],
+      res: c => c.level >= 6 ? [{ key:"sub-whole", name:"Integridade do Corpo", max: wis(c), reset:"long" }] : [] }
+  },
+  "Paladino": {
+    "Devoção": { al:["devocao","juramento de devocao","devotion"], feats:[
+      [3,"Magias do Juramento", SUB_SPELLS],
+      [3,"Arma Sagrada", c => `Canalizar Divindade: por 10 minutos, soma CAR (${sg(cm(c,"cha"))}) aos ataques com a arma, que brilha e pode causar dano radiante.`],
+      [7,"Aura de Devoção","Você e aliados na aura são imunes a Enfeitiçado."],
+      [15,"Golpe de Proteção","Ao conjurar Golpe Divino, você e aliados na aura ganham meia cobertura."],
+      [20,"Nimbo Sagrado","Ação bônus por 10 minutos: aura de luz que causa dano radiante a inimigos e dá vantagem contra corruptores e mortos-vivos. 1x por descanso longo (ou espaço de 5º)."]] },
+    "Glória": { al:["gloria","juramento de gloria","glory"], feats:[
+      [3,"Magias do Juramento", SUB_SPELLS],
+      [3,"Golpe Inspirador", c => `Após Golpe Divino, Canalizar Divindade: distribui 2d8 + ${c.level} PV temporários entre aliados.`],
+      [3,"Atleta Inigualável","Canalizar Divindade: por 1 hora, vantagem em Atletismo e Acrobacia e saltos maiores."],
+      [7,"Aura de Agilidade","+3 m de deslocamento; aliados que começam o turno na aura também ganham +3 m."],
+      [15,"Defesa Gloriosa", c => `Reação: soma CAR à CA contra um ataque; se errar, você contra-ataca. ${cha(c)}x por descanso longo.`],
+      [20,"Lenda Viva","Ação bônus por 10 minutos: vantagem em testes de CAR, refaz ataques que erram e salvaguardas que falham. 1x por descanso longo (ou espaço de 5º)."]],
+      res: c => c.level >= 15 ? [{ key:"sub-glorydef", name:"Defesa Gloriosa", max: cha(c), reset:"long" }] : [] },
+    "Anciões": { al:["ancioes","anciaos","juramento dos ancioes","ancients"], feats:[
+      [3,"Magias do Juramento", SUB_SPELLS],
+      [3,"Ira da Natureza","Canalizar Divindade: vinhas espectrais tentam deixar Contidas criaturas a até 4,5 m (FOR)."],
+      [7,"Aura de Proteção Natural","Você e aliados na aura têm resistência a dano necrótico, psíquico e radiante."],
+      [15,"Sentinela Imortal","Ao cair a 0 PV, fica com 1 PV, 1x por descanso longo; não envelhece magicamente."],
+      [20,"Campeão Ancião","Ação bônus por 1 minuto: recupera 10 PV por turno, conjura magias como ação bônus e inimigos têm desvantagem contra suas magias. 1x por descanso longo (ou espaço de 5º)."]] },
+    "Vingança": { al:["vinganca","juramento de vinganca","vengeance"], feats:[
+      [3,"Magias do Juramento", SUB_SPELLS],
+      [3,"Voto de Inimizade","Canalizar Divindade ao usar a ação de Ataque: vantagem nos ataques contra uma criatura por 1 minuto."],
+      [7,"Vingador Implacável","Ao acertar um ataque de oportunidade, zera o deslocamento do alvo e pode se mover metade do seu."],
+      [15,"Alma da Vingança","Quando o alvo do seu Voto ataca, você pode fazer um ataque corpo a corpo contra ele como reação."],
+      [20,"Anjo Vingador","Ação bônus por 10 minutos: voo de 18 m e aura que amedronta inimigos. 1x por descanso longo (ou espaço de 5º)."]] }
+  },
+  "Patrulheiro": {
+    "Mestre das Feras": { al:["mestre das feras","beast master","senhor das feras"], feats:[
+      [3,"Companheiro Primal","Uma fera da terra, do mar ou do céu luta ao seu lado; dê comandos com ação bônus ou troque um ataque seu pelo ataque dela."],
+      [7,"Treinamento Excepcional","O comando também pode fazê-la usar Disparada, Desengajar, Esquivar ou Ajudar; os ataques dela podem causar dano de força."],
+      [11,"Fúria Bestial","Sua fera faz dois ataques; o primeiro acerto contra o alvo da Marca do Caçador causa dano extra."],
+      [15,"Compartilhar Magias","Magias que você conjura em si também podem afetar sua fera a até 9 m."]] },
+    "Andarilho Feérico": { al:["andarilho feerico","fey wanderer","errante feerico"], feats:[
+      [3,"Magias do Andarilho", SUB_SPELLS],
+      [3,"Golpes Terríveis", c => `1x por turno, +1d${c.level >= 11 ? 6 : 4} de dano psíquico ao acertar com arma.`],
+      [3,"Encanto de Outro Mundo","Soma SAB aos testes de Carisma e ganha proficiência em Enganação, Atuação ou Persuasão."],
+      [7,"Reviravolta Sedutora","Vantagem contra Enfeitiçado e Amedrontado; reação para redirecionar esses efeitos a outra criatura."],
+      [11,"Reforços Feéricos","Sempre tem Invocar Fada preparada; conjura 1x sem espaço e pode dispensar a concentração."],
+      [15,"Andarilho Nebuloso", c => `Conjura Passo Nebuloso sem espaço ${wis(c)}x por descanso longo, podendo levar uma criatura junto.`]],
+      res: c => c.level >= 15 ? [{ key:"sub-mistyw", name:"Passo Nebuloso grátis", max: wis(c), reset:"long" }] : [] },
+    "Perseguidor Sombrio": { al:["perseguidor sombrio","gloom stalker","espreitador sombrio"], feats:[
+      [3,"Magias do Perseguidor", SUB_SPELLS],
+      [3,"Emboscador Temível", c => `Soma SAB à iniciativa; no 1º turno, +3 m de deslocamento; Golpe Temível causa +2d6 de dano psíquico, ${wis(c)}x por descanso longo.`],
+      [3,"Visão Umbral","Visão no escuro de 18 m (ou +18 m); fica invisível a quem depende de visão no escuro para vê-lo."],
+      [7,"Mente de Ferro","Proficiência em salvaguardas de SAB (ou INT ou CAR, se já tiver)."],
+      [11,"Rajada do Perseguidor","O Golpe Temível vira 2d8 e ganha efeitos extras."],
+      [15,"Esquiva Sombria","Reação: impõe desvantagem num ataque contra você e se teletransporta 9 m."]],
+      res: c => [{ key:"sub-dread", name:"Golpe Temível", max: wis(c), reset:"long" }] },
+    "Caçador": { al:["cacador","hunter"], feats:[
+      [3,"Saber do Caçador","Descobre imunidades, resistências e vulnerabilidades do alvo da Marca do Caçador."],
+      [3,"Presa do Caçador","Escolha: Matador de Colossos (+1d8 contra feridos, 1x por turno) ou Quebrador de Hordas (um ataque extra contra outra criatura próxima). Pode trocar após um descanso."],
+      [7,"Táticas Defensivas","Escolha: Escapar da Horda (ataques de oportunidade contra você com desvantagem) ou Defesa contra Ataques Múltiplos."],
+      [11,"Presa Superior","O dano extra da Marca do Caçador também atinge outra criatura a até 9 m."],
+      [15,"Defesa Superior do Caçador","Reação ao sofrer dano: resistência a esse tipo de dano até o fim do turno."]] }
+  }
+};
+for (const cls in SUBCLASS_DATA) SUBCLASSES[cls] = Object.keys(SUBCLASS_DATA[cls]);
+const normTxt = v => String(v || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[()]/g, " ").replace(/\s+/g, " ").trim();
+function subOf(c){
+  const list = SUBCLASS_DATA[c.cls]; if (!list || !c.subclass) return null;
+  const t = normTxt(c.subclass);
+  for (const k in list) { const d = list[k]; if (normTxt(k) === t || d.al.some(a => a === t || t.includes(a))) return Object.assign({ name:k }, d); }
+  return null;
+}
+const THIRD = [[],[],[],[2],[3],[3],[3],[4,2],[4,2],[4,2],[4,3],[4,3],[4,3],[4,3,2],[4,3,2],[4,3,2],[4,3,3],[4,3,3],[4,3,3],[4,3,3,1],[4,3,3,1]];
+
+const lineageOf = c => { const L = LINEAGES[c.species]; return L && L.opts[c.lineage] ? L.opts[c.lineage] : null; };
+
+
+function lineageText(c, fallback){
+  const ln = lineageOf(c); if (!ln) return fallback;
+  const sp = (ln.spells || []).map(([l, lv, n]) => `${n} (${lv === 0 ? "truque" : lv + "º círculo"}, nível ${l})`);
+  return [c.lineage !== c.species && LINEAGES[c.species].label !== "Legado infernal" ? c.lineage + "." : "", ln.text || "",
+    sp.length ? "Magias: " + sp.join(", ") + ". Usam Inteligência, Sabedoria ou Carisma, à sua escolha (a mesma para todas)." : ""].filter(Boolean).join(" ");
+}
+function presetSpells(c){
+  const ln = lineageOf(c), out = [];
+  if (ln && ln.spells) for (const [l, lv, n, en, uses] of ln.spells) if (c.level >= l)
+    out.push({ key:`ln:${c.species}:${n}`, name:n, lvl:lv, notes:(lv ? (uses === "pb" ? `Da espécie: sem espaço ${prof(c.level)}x por descanso longo.` : LINEAGE_SPELL_NOTE) : "Truque da espécie.") + (en ? ` Nome original: ${en}.` : "") });
+  if (c.species === "Aasimar") out.push({ key:"ln:Aasimar:Luz", name:"Luz", lvl:0, notes:"Truque da espécie (Carisma). Nome original: Light." });
+  if (c.species === "Tiefling") out.push({ key:"ln:Tiefling:Taumaturgia", name:"Taumaturgia", lvl:0, notes:"Truque da espécie. Nome original: Thaumaturgy." });
+  return out;
+}
+function presetFeatures(c){
+  const out = [];
+  const add = (key, src, lvl, name, text) => out.push({ key, src, lvl, name, text: typeof text === "function" ? text(c) : text });
+  const cd = CLASS_DATA[c.cls];
+  if (cd) {
+    add("cls:skills", "Classe", 1, "Proficiências de classe",
+      `Perícias: escolha ${cd.skills[0]} entre ${cd.skills[1].length === 18 ? "quaisquer" : cd.skills[1].map(skName).join(", ")}. Armaduras: ${cd.armor}. Armas: ${cd.weapons}.${cd.tools ? " Ferramentas: " + cd.tools + "." : ""}`);
+    cd.feats.forEach(([l, n, t]) => { if (c.level >= l) add(`cls:${c.cls}:${l}:${n}`, "Classe", l, n, t); });
+    const sb = subOf(c);
+    if (sb) sb.feats.forEach(([l, n, t]) => { if (c.level >= l) add(`subf:${c.cls}:${sb.name}:${l}:${n}`, "Subclasse", l, n, t); });
+    else cd.sub.forEach(l => { if (c.level >= l) add(`sub:${l}`, "Subclasse", l, l === cd.sub[0] ? `Subclasse${c.subclass ? ": " + c.subclass : ""}` : `Característica de subclasse (nível ${l})`,
+      l === cd.sub[0] ? (c.subclass ? "Não reconheci essa subclasse. Anote aqui as características dela." : "Escolha sua subclasse nos dados do personagem (há sugestões) para preencher as características.") : "Veja no livro a característica deste nível da sua subclasse e anote aqui."); });
+    cd.asi.forEach(l => { if (c.level >= l) add(`asi:${l}`, "Classe", l, `Aumento de Atributo (nível ${l})`, "Um talento: Aumento de Valor de Atributo (+2 em um ou +1 em dois, máximo 20) ou outro talento para o qual se qualifique."); });
+    if (c.level >= 19) add("cls:boon", "Classe", 19, "Dádiva Épica", "Um talento de Dádiva Épica ou outro talento para o qual se qualifique.");
+  }
+  const sp = SPECIES[c.species];
+  if (sp) sp.traits.forEach(([l, n, t]) => { if (c.level >= l) add(`sp:${c.species}:${n}`, "Espécie", l, n, t); });
+  const bg = BACKGROUNDS[c.background];
+  if (bg) {
+    add(`bg:${c.background}`, "Antecedente", 1, `Antecedente: ${c.background}`,
+      `Aumentos de atributo: +2 em um e +1 em outro, ou +1 nos três, entre ${bg[0].map(k => ABN[k]).join(", ")} (aplique nos valores da aba Ficha). Perícias: ${bg[2].map(skName).join(" e ")}. Ferramenta: ${bg[3]}.`);
+    const fk = featKeyOf(bg[1]), f = ORIGIN_FEATS[fk];
+    if (f) add(`feat:${fk}`, "Talento", 1, f[0] + (fk === "magic" ? ` (${bg[1].split(":")[1]})` : ""), f[1]);
+  }
+  return out;
+}
+function presetResources(c){
+  const cd = CLASS_DATA[c.cls], sp = SPECIES[c.species];
+  let r = [];
+  if (cd && cd.res) r = r.concat(cd.res(c));
+  const sb = subOf(c); if (sb && sb.res) r = r.concat(sb.res(c));
+  if (sp && sp.res) r = r.concat(sp.res(c));
+  if (c.featKeys.includes("lucky")) r.push({ key:"feat-luck", name:"Pontos de Sorte", max:prof(c.level), reset:"long" });
+  const ln = lineageOf(c);
+  if (ln && ln.spells) for (const [l, lv, n, en, uses] of ln.spells) if (c.level >= l && lv > 0)
+    r.push({ key:`ln-res:${n}`, name:`${n} (sem espaço)`, max: uses === "pb" ? prof(c.level) : 1, reset:"long" });
+  return r;
+}
+function presetProfs(c){
+  const cd = CLASS_DATA[c.cls], bg = BACKGROUNDS[c.background];
+  const lines = [];
+  if (cd) { lines.push("Armaduras: " + cd.armor + "."); lines.push("Armas: " + cd.weapons + "."); }
+  const tools = [cd && cd.tools, bg && bg[3]].filter(Boolean);
+  if (tools.length) lines.push("Ferramentas: " + tools.join("; ") + ".");
+  return lines.join("\n");
+}
+const SRC_ORDER = ["Classe","Subclasse","Espécie","Antecedente","Talento","Outro"];
+function applyPresets(c, opts = {}){
+  const bg = BACKGROUNDS[c.background];
+  c.featKeys = bg ? [featKeyOf(bg[1])] : [];
+  // características
+  const want = presetFeatures(c), wantKeys = new Set(want.map(f => f.key));
+  c.feats = c.feats.filter(f => !f.auto || f.edited || wantKeys.has(f.key));
+  const hidden = new Set(c.hiddenFeats);
+  for (const w of want) {
+    if (hidden.has(w.key)) continue;
+    const ex = c.feats.find(f => f.key === w.key);
+    if (!ex) c.feats.push({ id: uid(), auto: true, ...w });
+    else if (!ex.edited) Object.assign(ex, w);
+  }
+  c.feats.sort((a, b) => (SRC_ORDER.indexOf(a.src) - SRC_ORDER.indexOf(b.src)) || (a.lvl - b.lvl));
+  // recursos
+  const wr = presetResources(c), wrKeys = new Set(wr.map(r => r.key));
+  c.resources = c.resources.filter(r => !r.key || r.edited || wrKeys.has(r.key));
+  for (const w of wr) {
+    const ex = c.resources.find(r => r.key === w.key);
+    if (!ex) c.resources.push({ id: uid(), used: 0, ...w });
+    else if (!ex.edited) { ex.name = w.name; ex.max = w.max; ex.reset = w.reset; ex.used = Math.min(ex.used, ex.max); }
+  }
+  // perícias do antecedente
+  const newSk = bg ? bg[2] : [];
+  for (const k of (c.autoSkills || [])) if (!newSk.includes(k) && c.skills[k] === 1) delete c.skills[k];
+  for (const k of newSk) if (!c.skills[k]) c.skills[k] = 1;
+  c.autoSkills = newSk.slice();
+  // proficiências (só se o texto ainda for o automático)
+  const pt = presetProfs(c);
+  if (!c.notes.profs.trim() || c.notes.profs === c.autoProfs) c.notes.profs = pt;
+  c.autoProfs = pt;
+  const sbx = subOf(c);
+  if (sbx && sbx.caster === "third" && !(CLASSES[c.cls] || [])[3]) c.spell.abil = "int";
+  // magias da espécie/linhagem
+  const ws = presetSpells(c), wsKeys = new Set(ws.map(x => x.key));
+  c.spell.list = c.spell.list.filter(x => !x.key || x.edited || wsKeys.has(x.key));
+  for (const w of ws) {
+    const ex = c.spell.list.find(x => x.key === w.key);
+    if (!ex) c.spell.list.push({ id: uid(), auto:true, prep:true, conc:false, rit:false, dmg:"", ...w });
+    else if (!ex.edited) Object.assign(ex, w);
+  }
+  // espécie
+  const sp = SPECIES[c.species];
+  if (sp && opts.speciesChanged) { const ln = lineageOf(c); c.speed = (ln && ln.speed) || sp.speed; if (!sp.size.includes(c.size)) c.size = sp.size[0]; }
+}
+function hpAutoMax(c){
+  const d = hitDie(c), con = cm(c, "con"), L = c.level;
+  const per = ((SPECIES[c.species] || {}).hpPerLevel || 0) + (c.featKeys.includes("tough") ? 2 : 0);
+  const sb = subOf(c), drac = sb && sb.hpPerLevelFrom3 && L >= 3 ? L : 0;
+  return Math.max(L, d + con + (L - 1) * (d / 2 + 1 + con) + per * L + drac);
+}
+function syncDerived(c){
+  if (c.hpAuto) {
+    const m = hpAutoMax(c);
+    if (m !== c.hp.max) { const full = c.hp.cur >= c.hp.max; c.hp.max = m; c.hp.cur = full ? m : Math.min(c.hp.cur, m); }
+  }
+  // usos que dependem de atributos (ex.: Inspiração de Bardo) acompanham
+  for (const w of presetResources(c)) { const r = c.resources.find(x => x.key === w.key && !x.edited); if (r && r.max !== w.max) { r.max = w.max; r.used = Math.min(r.used, r.max); } }
 }
 
 /* ================= ARMAZENAMENTO ================= */
@@ -451,7 +1324,7 @@ const ICONS = {
   plus:'<path d="M12 5v14M5 12h14"/>'
 };
 const ic = (n, label) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" ${label ? `role="img" aria-label="${label}"` : 'aria-hidden="true"'}>${ICONS[n]}</svg>`;
-const TABS = [["ficha","Ficha"],["combate","Combate"],["magias","Magias"],["itens","Itens"],["notas","Notas"],["dados","Dados"]];
+const TABS = [["ficha","Ficha"],["combate","Combate"],["magias","Magias"],["itens","Itens"],["notas","Traços"],["dados","Dados"]];
 let tab = lsGet("ficha5e:tab", "ficha");
 if (!TABS.some(t => t[0] === tab)) tab = "ficha";
 
@@ -463,11 +1336,13 @@ function skillBonus(c, s){ const lv = c.skills[s[0]] || 0; return abilMod(c, s[2
 function saveBonus(c, k){ return abilMod(c, k) + (c.saves[k] ? prof(c.level) : 0); }
 function hitDie(c){ return c.hdOverride || (CLASSES[c.cls] || CLASSES.Outra)[0]; }
 function spellAbil(c){ return c.spell.abil || "int"; }
+function initTotal(c){ return abilMod(c, "dex") + (+c.initBonus || 0) + (c.featKeys.includes("alert") ? prof(c.level) : 0); }
 
+function speciesLabel(c){ return !c.lineage ? c.species : c.lineage.startsWith(c.species) || c.lineage.includes(" ") && c.lineage.toLowerCase().includes(c.species.toLowerCase()) ? c.lineage : `${c.species} (${c.lineage})`; }
 function renderHeader(){
   const c = ch();
   $("#hName").textContent = c.name || "Sem nome";
-  const bits = [ (c.cls || "") + (c.subclass ? " (" + c.subclass + ")" : "") + " nível " + c.level, c.species ].filter(Boolean);
+  const bits = [ (c.cls || "") + (c.subclass ? " (" + c.subclass + ")" : "") + " nível " + c.level, speciesLabel(c) ].filter(Boolean);
   $("#hSub").textContent = bits.join(", ");
   $("#hpChipV").textContent = c.hp.cur + (c.hp.temp ? "+" + c.hp.temp : "") + "/" + c.hp.max;
   $("#hpChip").classList.toggle("low", c.hp.cur <= Math.floor(c.hp.max / 4));
@@ -496,9 +1371,9 @@ function vFicha(c){
   <section class="blk">
     <div class="stats">
       <div class="st"><span class="v">${sg(pb)}</span><span class="k">Proficiência</span></div>
-      <button class="st" data-act="roll-init"><span class="v">${sg(abilMod(c,"dex") + (+c.initBonus || 0))}</span><span class="k">Iniciativa</span></button>
+      <button class="st" data-act="roll-init"><span class="v">${sg(initTotal(c))}</span><span class="k">Iniciativa</span></button>
       <div class="st"><span class="v">${pp}</span><span class="k">Percepção passiva</span></div>
-      <div class="st"><span class="v">${esc(c.speed)} m</span><span class="k">Deslocamento</span></div>
+      <div class="st"><span class="v">${esc(String(c.speed).replace(".", ","))} m</span><span class="k">Deslocamento</span></div>
     </div>
   </section>
   <section class="blk">
@@ -558,10 +1433,11 @@ function vCombate(c){
         <button class="btn blue" data-act="hp-temp">Temp.</button>
       </div>
       <div class="mini">
-        <div><label for="hpMax">PV máximo</label><input id="hpMax" type="number" inputmode="numeric" value="${hp.max}" data-bind="hpmax"></div>
+        <div><label for="hpMax">PV máximo${c.hpAuto ? " (auto)" : ""}</label><input id="hpMax" type="number" inputmode="numeric" value="${hp.max}" data-bind="hpmax"></div>
         <div><label for="acV">CA</label><input id="acV" type="number" inputmode="numeric" value="${esc(c.ac)}" data-bind="num" data-path="ac"></div>
         <div><label for="spV">Desloc. (m)</label><input id="spV" type="number" inputmode="decimal" step="1.5" value="${esc(c.speed)}" data-bind="num" data-path="speed"></div>
       </div>
+      ${c.hpAuto ? "" : `<button class="btn sm ghost" style="margin-top:8px" data-act="hp-auto">Usar PV máximo pela média da classe (${hpAutoMax(c)})</button>`}
     </div>
   </section>
 
@@ -615,6 +1491,7 @@ function vCombate(c){
 
   ${vResources(c)}`;
 }
+const RESET_TXT = { short:"volta no descanso curto", short1:"volta 1 no curto e todos no longo", long:"volta no descanso longo", none:"não recarrega" };
 function vResources(c){
   return `<section class="blk">
     <h2>Recursos e usos <button class="btn sm" data-act="res-new">${ic("plus")} Novo</button></h2>
@@ -622,8 +1499,8 @@ function vResources(c){
       <div class="item">
         <div class="item-h"><span class="t">${esc(r.name || "Recurso")}</span>
           <button class="iconbtn" data-act="res-edit" data-id="${r.id}">${ic("edit","Editar recurso")}</button></div>
-        <div class="meta">${Math.max(0, r.max - r.used)} de ${r.max} disponíveis, ${{short:"volta no descanso curto",long:"volta no descanso longo",none:"não recarrega"}[r.reset] || ""}</div>
-        <div class="pips">${Array.from({length: Math.min(30, r.max)}, (_, i) => `<button class="${i < r.used ? "used" : ""}" data-act="res-pip" data-id="${r.id}" data-i="${i}" aria-label="Uso ${i+1} ${i < r.used ? "gasto" : "disponível"}"></button>`).join("")}</div>
+        <div class="meta">${Math.max(0, r.max - r.used)} de ${r.max} disponíveis, ${RESET_TXT[r.reset] || ""}</div>
+        ${r.max > 20 ? `<div class="pool"><b>${r.max - r.used}/${r.max}</b>${[-5,-1,1,5].map(d => `<button class="btn sm" data-act="res-adj" data-id="${r.id}" data-d="${d}" aria-label="${d < 0 ? "Gastar" : "Recuperar"} ${Math.abs(d)}">${d > 0 ? "+" : "−"}${Math.abs(d)}</button>`).join("")}</div>` : `<div class="pips">${Array.from({length: Math.min(30, r.max)}, (_, i) => `<button class="${i < r.used ? "used" : ""}" data-act="res-pip" data-id="${r.id}" data-i="${i}" aria-label="Uso ${i+1} ${i < r.used ? "gasto" : "disponível"}"></button>`).join("")}</div>`}
       </div>`).join("") : `<div class="empty">Fúria, Ki, Canalizar Divindade, Retomar o Fôlego… adicione aqui o que tem número de usos.</div>`}
     </div>
   </section>`;
@@ -699,15 +1576,36 @@ function vItens(c){
   </section>`;
 }
 
+/* ---------- características ---------- */
+function vFeats(c){
+  const groups = SRC_ORDER.map(src => [src, c.feats.filter(f => (f.src || "Outro") === src)]).filter(g => g[1].length);
+  const canPreset = CLASS_DATA[c.cls] || SPECIES[c.species] || BACKGROUNDS[c.background];
+  return `<section class="blk">
+    <h2>Características <span class="row"><button class="btn sm ghost" data-act="ft-sync">Atualizar</button><button class="btn sm" data-act="ft-new">${ic("plus")} Nova</button></span></h2>
+    ${groups.length ? groups.map(([src, list]) => `
+      <div class="lvlh">${src}</div>
+      <div class="list">${list.map(f => `
+        <details class="item feat">
+          <summary><span class="t">${esc(f.name)}</span>${f.lvl > 1 ? `<span class="tag lv">nv ${f.lvl}</span>` : ""}${f.auto && !f.edited ? "" : `<span class="tag ed">editada</span>`}</summary>
+          <p class="ftxt">${esc(f.text)}</p>
+          <div class="acts"><button class="btn sm" data-act="ft-edit" data-id="${f.id}">${ic("edit")} Editar</button></div>
+        </details>`).join("")}</div>`).join("")
+      : `<div class="empty">${canPreset ? `Nenhuma característica ainda. <button class="btn sm gold" data-act="ft-sync">Preencher pelas regras</button>` : "Escolha classe, espécie e antecedente nos dados do personagem (toque no nome no topo) para preencher automaticamente."}</div>`}
+    ${c.hiddenFeats.length ? `<p class="small"><button class="btn sm ghost" data-act="ft-unhide">Restaurar ${c.hiddenFeats.length} característica(s) excluída(s)</button></p>` : ""}
+    <p class="muted small">“Atualizar” refaz as características automáticas pela classe, espécie, antecedente e nível. As que você editou ou criou ficam como estão.</p>
+  </section>`;
+}
+
 /* ---------- aba Notas ---------- */
 function vNotas(c){
-  const f = [["features","Traços e talentos","Traços da espécie, talento de origem, características de classe…"],
+  const f = [["features","Anotações de traços e talentos","Detalhes de escolhas: linhagem, invocações, metamagias, talentos extras…"],
              ["profs","Proficiências com armas, armaduras e ferramentas",""],
              ["langs","Idiomas",""],
              ["personality","Personalidade e história",""],
              ["other","Outras anotações","Pistas, NPCs, missões…"]];
-  return f.map(([k, l, ph]) => `<section class="blk"><label class="fl" for="nt-${k}">${l}</label><textarea class="note" id="nt-${k}" data-bind="text" data-path="notes.${k}" placeholder="${esc(ph)}">${esc(c.notes[k])}</textarea></section>`).join("") +
-    `<p class="sync" id="syncNote">${syncText()}</p>`;
+  return vFeats(c) + f.map(([k, l, ph]) => `<section class="blk"><label class="fl" for="nt-${k}">${l}</label><textarea class="note" id="nt-${k}" data-bind="text" data-path="notes.${k}" placeholder="${esc(ph)}">${esc(c.notes[k])}</textarea></section>`).join("") +
+    `<p class="sync" id="syncNote">${syncText()}</p>
+    <p class="sync">Resumos próprios baseados nas regras do D&amp;D 2024 (SRD 5.2, licença CC-BY-4.0). Consulte o Livro do Jogador para o texto completo.</p>`;
 }
 
 /* ---------- aba Dados ---------- */
@@ -731,6 +1629,9 @@ function vDados(){
 
 function render(){
   const c = ch();
+  const before = c.hp.max + "|" + c.resources.map(r => r.max).join(",");
+  syncDerived(c);
+  if (before !== c.hp.max + "|" + c.resources.map(r => r.max).join(",")) save(c);
   renderHeader(); renderTabs();
   const v = { ficha: vFicha, combate: vCombate, magias: vMagias, itens: vItens, notas: vNotas, dados: vDados }[tab];
   main.innerHTML = v(c);
@@ -792,7 +1693,7 @@ let dlgConfirm = null;
 function dlgChars(){
   const ids = Object.keys(store.chars).sort((a, b) => store.chars[a].name.localeCompare(store.chars[b].name));
   openDlg(`<h2>Personagens</h2>
-    <ul class="charlist">${ids.map(id => { const c = store.chars[id]; return `<li><button class="pick" data-act="char-pick" data-id="${id}" ${id === store.cur ? 'aria-current="true"' : ""}><b>${esc(c.name)}</b><div class="muted small">${esc(c.cls)} nível ${c.level}${c.species ? ", " + esc(c.species) : ""}</div></button></li>`; }).join("")}</ul>
+    <ul class="charlist">${ids.map(id => { const c = store.chars[id]; return `<li><button class="pick" data-act="char-pick" data-id="${id}" ${id === store.cur ? 'aria-current="true"' : ""}><b>${esc(c.name)}</b><div class="muted small">${esc(c.cls)} nível ${c.level}${c.species ? ", " + esc(speciesLabel(c)) : ""}</div></button></li>`; }).join("")}</ul>
     <div class="list">
       <button class="btn full gold" data-act="char-edit">Editar dados de ${esc(ch().name)}</button>
       <button class="btn full" data-act="char-new">${ic("plus")} Novo personagem</button>
@@ -802,6 +1703,17 @@ function dlgChars(){
     </div>
     <p class="sync" id="syncNote">${syncText()}</p>`);
 }
+function fillLineage(speciesText, current){
+  const wrap = document.getElementById("lnWrap"), selEl = document.getElementById("lnSel"); if (!wrap || !selEl) return;
+  const [spc, lnAlias] = resolveSpecies(speciesText), L = LINEAGES[spc];
+  if (!L) { wrap.hidden = true; selEl.innerHTML = ""; return; }
+  wrap.hidden = false; document.getElementById("lnLabel").textContent = L.label;
+  const cur = lnAlias || current || selEl.value;
+  selEl.innerHTML = `<option value="">Escolha…</option>` + Object.keys(L.opts).map(k => `<option value="${esc(k)}" ${k === cur ? "selected" : ""}>${esc(k)}</option>`).join("");
+}
+dlgBody.addEventListener("input", e => { if (e.target.name === "species") fillLineage(e.target.value, ""); });
+dlgBody.addEventListener("change", e => { if (e.target.name === "cls") { const dl = document.getElementById("dl-sub"); if (dl) dl.innerHTML = (SUBCLASSES[e.target.value] || []).map(k => `<option value="${esc(k)}"></option>`).join(""); } });
+dlgBody.addEventListener("change", e => { if (e.target.name === "species") fillLineage(e.target.value, ""); });
 function dlgCharEdit(){
   const c = ch();
   openDlg(`<form><h2>Dados do personagem</h2>
@@ -809,24 +1721,39 @@ function dlgCharEdit(){
     <div class="grid2">
       ${fld("Classe", sel("cls", Object.keys(CLASSES), c.cls))}
       ${fld("Nível", inp("level", c.level, 'type="number" inputmode="numeric" min="1" max="20" required'))}
-      ${fld("Subclasse", inp("subclass", c.subclass, 'maxlength="40"'))}
-      ${fld("Espécie", inp("species", c.species, 'maxlength="40"'))}
-      ${fld("Antecedente", inp("background", c.background, 'maxlength="40"'))}
+      ${fld("Subclasse", inp("subclass", c.subclass, 'maxlength="40" list="dl-sub" autocomplete="off"'))}
+      ${fld("Espécie", inp("species", c.species, 'maxlength="40" list="dl-sp" autocomplete="off"'))}
+      <label class="fld" id="lnWrap"><span id="lnLabel">Linhagem</span><select name="lineage" id="lnSel"></select></label>
+      ${fld("Antecedente", inp("background", c.background, 'maxlength="40" list="dl-bg" autocomplete="off"'))}
       ${fld("Tendência", inp("alignment", c.alignment, 'maxlength="30"'))}
       ${fld("Tamanho", sel("size", ["Minúsculo","Pequeno","Médio","Grande"], c.size))}
       ${fld("Bônus extra de iniciativa", inp("initBonus", c.initBonus, 'type="number" inputmode="numeric"'))}
     </div>
     ${fld("Dado de Vida (deixe 0 para usar o da classe)", inp("hdOverride", c.hdOverride, 'type="number" inputmode="numeric" min="0" max="12"'))}
-    <p class="muted small">Ao trocar a classe, as salvaguardas e o atributo de magia são ajustados para os da classe nova.</p>
+    ${chk("auto", true, "Preencher características, recursos e perícias pelas regras")}
+    ${chk("hpAuto", c.hpAuto, "PV máximo automático (média da classe)")}
+    <datalist id="dl-sp">${Object.keys(SPECIES).concat(["Drow (Elfo Negro)","Alto Elfo","Elfo da Floresta","Gnomo da Floresta","Gnomo das Rochas"]).map(k => `<option value="${k}"></option>`).join("")}</datalist>
+    <datalist id="dl-bg">${Object.keys(BACKGROUNDS).map(k => `<option value="${k}"></option>`).join("")}</datalist>
+    <datalist id="dl-sub">${(SUBCLASSES[c.cls] || []).map(k => `<option value="${esc(k)}"></option>`).join("")}</datalist>
+    <p class="muted small">Espécie, antecedente e subclasse mostram sugestões do Livro do Jogador 2024, mas você pode digitar qualquer nome. Ao trocar a classe, as salvaguardas e o atributo de magia acompanham a classe nova.</p>
     ${dlgActs(false)}</form>`, o => {
+      const oldSpecies = c.species, oldLineage = c.lineage;
       const newCls = o.cls !== c.cls;
       c.name = o.name.trim() || "Sem nome"; c.cls = o.cls; c.level = clampInt(o.level, 1, 20);
       c.subclass = o.subclass.trim(); c.species = o.species.trim(); c.background = o.background.trim(); c.alignment = o.alignment.trim();
       c.size = o.size; c.initBonus = parseInt(o.initBonus, 10) || 0; c.hdOverride = clampInt(o.hdOverride, 0, 12);
       if (newCls) { const k = CLASSES[c.cls]; if (k[1].length) c.saves = Object.fromEntries(k[1].map(s => [s, true])); if (k[3]) c.spell.abil = k[3]; }
       c.hdUsed = Math.min(c.hdUsed, c.level);
+      c.hpAuto = !!o.hpAuto;
+      const matched = (v, list) => Object.keys(list).find(k => k.toLowerCase() === v.toLowerCase()) || v;
+      const [spc, lnAlias] = resolveSpecies(o.species);
+      c.species = spc; c.background = matched(c.background, BACKGROUNDS);
+      const L = LINEAGES[c.species];
+      c.lineage = L ? (L.opts[lnAlias] ? lnAlias : L.opts[o.lineage] ? o.lineage : "") : "";
+      if (o.auto) applyPresets(c, { speciesChanged: c.species !== oldSpecies || c.lineage !== oldLineage });
       save(); closeDlg(); render();
     });
+  fillLineage(c.species, c.lineage);
 }
 function dlgAttack(a){
   const isNew = !a; a = a || { id: uid(), name:"", abil:"str", prof:true, bonus:0, dmg:"1d8", addMod:true, dmgType:"", mastery:"", notes:"" };
@@ -859,12 +1786,13 @@ function dlgResource(r){
   openDlg(`<form><h2>${isNew ? "Novo recurso" : "Editar recurso"}</h2>
     ${fld("Nome", inp("name", r.name, 'required maxlength="50" placeholder="Fúria"'))}
     <div class="grid2">
-      ${fld("Usos máximos", inp("max", r.max, 'type="number" inputmode="numeric" min="1" max="30" required'))}
-      ${fld("Recarrega em", sel("reset", [["short","Descanso curto"],["long","Descanso longo"],["none","Não recarrega"]], r.reset))}
+      ${fld("Usos máximos", inp("max", r.max, 'type="number" inputmode="numeric" min="1" max="999" required'))}
+      ${fld("Recarrega em", sel("reset", [["short","Descanso curto"],["short1","1 no curto, todos no longo"],["long","Descanso longo"],["none","Não recarrega"]], r.reset))}
     </div>
+    ${r.key ? chk("keepAuto", !r.edited, "Atualizar automaticamente pelo nível") : ""}
     ${dlgActs(!isNew)}</form>`, (o, btn) => {
       if (btn === "del") c.resources = c.resources.filter(x => x.id !== r.id);
-      else { Object.assign(r, { name:o.name.trim(), max:clampInt(o.max,1,30), reset:o.reset }); r.used = Math.min(r.used, r.max); if (isNew) c.resources.push(r); }
+      else { Object.assign(r, { name:o.name.trim(), max:clampInt(o.max,1,999), reset:o.reset }); if (r.key) r.edited = !o.keepAuto; r.used = Math.min(r.used, r.max); if (isNew) c.resources.push(r); }
       save(); closeDlg(); render();
     });
 }
@@ -886,6 +1814,7 @@ function dlgSpell(s){
       else {
         if (o.dmg.trim() && !parseExpr(o.dmg)) { dlgError("Dano inválido. Use algo como 8d6 ou 1d8+3."); return; }
         Object.assign(s, { name:o.name.trim(), lvl:clampInt(o.lvl,0,9), prep:o.prep, conc:o.conc, rit:o.rit, dmg:o.dmg.trim(), notes:o.notes.trim() });
+        if (s.auto) s.edited = true;
         if (isNew) c.spell.list.push(s);
       }
       save(); closeDlg(); render();
@@ -904,6 +1833,30 @@ function dlgItem(it){
       save(); closeDlg(); render();
     });
 }
+function dlgFeat(f){
+  const isNew = !f; f = f || { id: uid(), name:"", src:"Outro", lvl: ch().level, text:"" };
+  const c = ch();
+  openDlg(`<form><h2>${isNew ? "Nova característica" : "Editar característica"}</h2>
+    ${fld("Nome", inp("name", f.name, 'required maxlength="80"'))}
+    <div class="grid2">
+      ${fld("Origem", sel("src", SRC_ORDER, f.src || "Outro"))}
+      ${fld("Nível", inp("lvl", f.lvl || 1, 'type="number" inputmode="numeric" min="1" max="20"'))}
+    </div>
+    ${fld("Descrição", `<textarea name="text" rows="6" maxlength="3000">${esc(f.text)}</textarea>`)}
+    ${f.auto ? chk("keepAuto", !f.edited, "Atualizar automaticamente (desmarque para manter seu texto)") : ""}
+    ${dlgActs(!isNew)}</form>`, (o, btn) => {
+      if (btn === "del") {
+        c.feats = c.feats.filter(x => x.id !== f.id);
+        if (f.auto && f.key && !c.hiddenFeats.includes(f.key)) c.hiddenFeats.push(f.key);
+      } else {
+        const changed = o.name.trim() !== f.name || o.text.trim() !== f.text || o.src !== f.src;
+        Object.assign(f, { name:o.name.trim(), src:o.src, lvl:clampInt(o.lvl,1,20), text:o.text.trim() });
+        if (f.auto) f.edited = changed || !o.keepAuto;
+        if (isNew) c.feats.push(f);
+      }
+      save(); closeDlg(); render();
+    });
+}
 function dlgShortRest(){
   const c = ch(), left = Math.max(0, c.level - c.hdUsed), cm = abilMod(c, "con");
   openDlg(`<h2>Descanso curto</h2>
@@ -913,7 +1866,7 @@ function dlgShortRest(){
       <button class="btn full gold" data-act="sr-done">Concluir descanso curto</button>
       <button class="btn full ghost" data-act="dlg-close">Cancelar</button>
     </div>
-    <p class="muted small">Ao concluir, os recursos de descanso curto voltam${c.cls === "Bruxo" ? ", junto com os espaços de magia de Pacto" : ""}.</p>`);
+    <p class="muted small">Ao concluir, os recursos de descanso curto voltam (e os de “1 no curto” recuperam um uso)${c.cls === "Bruxo" ? ", junto com os espaços de magia de Pacto" : ""}.</p>`);
 }
 async function exportBackup(){
   const json = JSON.stringify({ app:"ficha5e", v:1, exported:new Date().toISOString(), chars:store.chars }, null, 1);
@@ -987,14 +1940,14 @@ function doLongRest(){
   save(); rerender(); showToast({ label:"Descanso longo", total:"✓", detail:"Tudo recuperado. Bom dia, aventureiro." });
 }
 function fillSlots(){
-  const c = ch(), type = (CLASSES[c.cls] || CLASSES.Outra)[2];
-  if (!type) { showToast({ label:"Espaços de magia", total:"✗", detail:`${c.cls} não tem espaços pela tabela da classe. Para magia de subclasse ou multiclasse, use “Ajustar” e preencha à mão.`, fumble:true }); return; }
+  const c = ch(), sbt = subOf(c), type = sbt && sbt.caster === "third" ? "third" : (CLASSES[c.cls] || CLASSES.Outra)[2];
+  if (!type) { showToast({ label:"Espaços de magia", total:"✗", detail:`${c.cls}${c.subclass ? " (" + c.subclass + ")" : ""} não tem espaços pela tabela. Se for Cavaleiro Místico ou Trapaceiro Arcano, coloque a subclasse nos dados do personagem; para multiclasse, use “Ajustar” e preencha à mão.`, fumble:true }); return; }
   if (c.spell.slots.some(s => s.max)) { askConfirm("Espaços de magia", `Substituir os espaços atuais pelos da tabela de ${c.cls} nível ${c.level}?`, "Substituir", () => doFillSlots(type)); return; }
   doFillSlots(type);
 }
 function doFillSlots(type){
   const c = ch();
-  const arr = type === "full" ? FULL[c.level] : type === "half" ? HALF[c.level] : pactSlots(c.level);
+  const arr = type === "full" ? FULL[c.level] : type === "half" ? HALF[c.level] : type === "third" ? THIRD[c.level] : pactSlots(c.level);
   c.spell.slots = Array.from({ length: 9 }, (_, i) => ({ max: arr[i] || 0, used: 0 }));
   showAllSlots = false;
   save(); rerender();
@@ -1016,7 +1969,7 @@ document.addEventListener("click", e => {
     case "roll-abil": d20Test("Teste de " + ABIL.find(a => a[0] === d.k)[1], abilMod(c, d.k)); break;
     case "roll-save": d20Test("Salvaguarda de " + ABIL.find(a => a[0] === d.k)[1], saveBonus(c, d.k)); break;
     case "roll-skill": { const s = SKILLS.find(x => x[0] === d.k); d20Test(s[1], skillBonus(c, s)); break; }
-    case "roll-init": d20Test("Iniciativa", abilMod(c, "dex") + (+c.initBonus || 0)); break;
+    case "roll-init": d20Test("Iniciativa", initTotal(c)); break;
     case "roll-spatk": d20Test("Ataque mágico", prof(c.level) + abilMod(c, spellAbil(c))); break;
     case "tog-save": c.saves[d.k] = !c.saves[d.k]; save(); rerender(); break;
     case "cyc-skill": c.skills[d.k] = ((c.skills[d.k] || 0) + 1) % 3; save(); rerender(); break;
@@ -1039,6 +1992,12 @@ document.addEventListener("click", e => {
     case "res-edit": dlgResource(findBy(c.resources, d.id)); break;
     case "res-pip": { const r = findBy(c.resources, d.id); if (!r) break; const i = +d.i; r.used = r.used > i ? i : i + 1; save(); rerender(); break; }
     case "rest-short": dlgShortRest(); break;
+    case "res-adj": { const r = findBy(c.resources, d.id); if (r) { r.used = Math.max(0, Math.min(r.max, r.used - +d.d)); save(); rerender(); } break; }
+    case "hp-auto": c.hpAuto = true; save(); rerender(); break;
+    case "ft-new": dlgFeat(); break;
+    case "ft-unhide": c.hiddenFeats = []; applyPresets(c, { speciesChanged: false }); save(); rerender(); break;
+    case "ft-edit": dlgFeat(findBy(c.feats, d.id)); break;
+    case "ft-sync": applyPresets(c, { speciesChanged: false }); save(); rerender(); showToast({ label:"Características", total:"✓", detail:"Atualizadas pela classe, espécie, antecedente e nível." }); break;
     case "sr-spend": {
       if (c.hdUsed >= c.level) break;
       const r = die(hitDie(c)), cm = abilMod(c, "con"), heal = Math.max(1, r + cm);
@@ -1048,7 +2007,7 @@ document.addEventListener("click", e => {
       showToast({ label:"Dado de Vida", total:"+" + heal, detail:`d${hitDie(c)} ${r} ${cm >= 0 ? "+" : "−"} ${Math.abs(cm)}. PV agora: ${c.hp.cur}/${c.hp.max}.` });
       break; }
     case "sr-done":
-      c.resources.forEach(r => { if (r.reset === "short") r.used = 0; });
+      c.resources.forEach(r => { if (r.reset === "short") r.used = 0; else if (r.reset === "short1") r.used = Math.max(0, r.used - 1); });
       if (c.cls === "Bruxo") c.spell.slots.forEach(s => s.used = 0);
       save(); closeDlg(); rerender(); showToast({ label:"Descanso curto", total:"✓", detail:"Recursos de descanso curto recuperados." }); break;
     case "rest-long": longRest(); break;
@@ -1091,7 +2050,7 @@ document.addEventListener("change", e => {
   const c = ch();
   if (b === "abil") c.abilities[el.dataset.k] = clampInt(el.value, 1, 30);
   else if (b === "num") setPath(c, el.dataset.path, Math.max(0, parseFloat(String(el.value).replace(",", ".")) || 0));
-  else if (b === "hpmax") { const full = c.hp.cur >= c.hp.max; c.hp.max = clampInt(el.value, 1, 9999); c.hp.cur = full ? c.hp.max : Math.min(c.hp.cur, c.hp.max); }
+  else if (b === "hpmax") { c.hpAuto = false; const full = c.hp.cur >= c.hp.max; c.hp.max = clampInt(el.value, 1, 9999); c.hp.cur = full ? c.hp.max : Math.min(c.hp.cur, c.hp.max); }
   else if (b === "slotmax") { const s = c.spell.slots[+el.dataset.i]; s.max = clampInt(el.value, 0, 9); s.used = Math.min(s.used, s.max); }
   else if (b === "spabil") c.spell.abil = el.value;
   else if (b === "text") return;
